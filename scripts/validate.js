@@ -7,7 +7,8 @@ const content = path.join(__dirname, '..', 'src', 'content');
 const files = ['q-s1.js', 'q-s2.js', 'q-s3.js', 'q-s4.js', 'q-s5.js', 'q-s6.js', 'q-s7.js', 'q-fix.js', 'q-fix2.js', 'q-fix3.js'];
 let src = 'const Q=[];';
 for (const f of files) src += fs.readFileSync(path.join(content, f), 'utf8') + '\n';
-src += 'const CARDS=[];' + fs.readFileSync(path.join(content, 'cards.js'), 'utf8') + ';({Q,CARDS})';
+src += 'const CARDS=[];' + fs.readFileSync(path.join(content, 'cards.js'), 'utf8') + '\n';
+src += fs.readFileSync(path.join(content, '..', 'guide.js'), 'utf8') + '\n;({Q,CARDS})';
 const { Q, CARDS } = eval(src);
 
 const ids = new Set();

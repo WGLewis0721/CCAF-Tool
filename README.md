@@ -9,7 +9,7 @@ CCAF-Tool is an unofficial study tool for the **Claude Certified Architect, Foun
 ## What's inside
 
 - **Home:** A landing page where you pick a study mode. Number keys 1 to 6 open each mode.
-- **Exam map:** All 30 task statements on one map, colored by how well you know each one, with the six exam scenarios and the five common wrong-answer patterns.
+- **Campaign Mode:** All 30 task statements on one map, colored by how well you know each one, with the six exam scenarios and the five common wrong-answer patterns.
 - **Practice:** 124 scenario questions with explanations, 128 flashcards with spaced repetition, a timed 60-question mock exam, and three quick drills.
 - **Learn:** A lesson for each of the five domains, ten decision rules, six scenario briefs, trigger words, diagrams, and a four-week study plan.
 - **Archie:** A guide who docks in the menu and offers tips and facts based on the screen you are on. His 19-step tour explains each exam domain using this app's own code.
@@ -64,7 +64,9 @@ Every later push to `main` rebuilds and redeploys the site automatically. If val
 .github/workflows/pages.yml   Build and deploy workflow for GitHub Pages
 scripts/build.py              Combines the source files into one HTML page
 scripts/validate.js           Checks the question bank and flashcards
-src/template.html             Page shell, styles, and core app logic
+src/template.html             Page shell and core app logic
+src/design.css                Shared visual system and responsive styles
+src/assets/                   Optimized original Higgsfield artwork
 src/app.js                    Exam map, Archie, hints, the guided tour, and the home page
 src/guide.js                  Lessons, items, trigger words, and diagrams
 src/content/q-s1.js ... q-s7.js   Questions, grouped by scenario
@@ -74,7 +76,7 @@ src/content/drills.js         Drill items and the study plan
 tests/test_ui.py              Optional end-to-end browser test
 ```
 
-The build inserts `src/app.js` at the `/*__APP__*/` marker and all content at the `/*__DATA__*/` marker in `src/template.html`. The output is one self-contained file. Fonts load from Google Fonts.
+The build inserts `src/app.js` at the `/*__APP__*/` marker and all content at the `/*__DATA__*/` marker in `src/template.html`. The output is one self-contained file. Artwork is embedded at build time, so the output remains portable. Fonts load from Google Fonts.
 
 ## Adding or editing questions
 
@@ -117,6 +119,20 @@ python -m playwright install chromium
 python scripts/build.py
 python tests/test_ui.py
 ```
+
+The responsive release checks cover desktop Chromium, iPhone-sized WebKit,
+Samsung-sized Chromium, a 320px phone, and tablet WebKit. They verify artwork,
+progress persistence, Campaign Mode, lesson diagrams, keyboard navigation,
+reduced motion, and Archie's original greetings.
+
+```bash
+python -m playwright install chromium webkit
+python tests/test_release.py
+```
+
+Set `CCAF_TEST_URL` to the GitHub Pages address to run either test against the
+deployed site. Browser emulation covers these layouts and engines; it does not
+replace testing on physical devices.
 
 ## Sources
 

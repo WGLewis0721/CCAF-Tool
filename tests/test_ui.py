@@ -6,10 +6,11 @@ Screenshots land in tests/screenshots/.
 """
 import asyncio
 import pathlib
+import os
 from playwright.async_api import async_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-F = (ROOT / 'dist' / 'index.html').as_uri()
+F = os.environ.get('CCAF_TEST_URL', (ROOT / 'dist' / 'index.html').as_uri())
 SP_DIR = ROOT / 'tests' / 'screenshots'
 SP_DIR.mkdir(parents=True, exist_ok=True)
 SP = str(SP_DIR) + '/'
@@ -59,6 +60,7 @@ async def run(b,w,h,scheme,tag,errs):
     await pg.screenshot(path=SP+tag+'-mock.png',full_page=False)
     n=await pg.evaluate("document.querySelectorAll('.qmap button').length")
     print(tag,'mock items',n)
+    assert n == 60, 'Mock exam must retain 60 questions'
     for i in range(60):
         await pg.click('.opt >> nth=0')
         if i<59: await pg.click('[data-act=mnext]')
@@ -121,6 +123,7 @@ async def run(b,w,h,scheme,tag,errs):
         await pg.click('#coach [data-act=cnext]')
         if fin=='Finish' or n>30: break
     print(tag,'coach steps',n,'closed',await pg.evaluate("document.querySelector('#coach').hidden"))
+    assert n == 19 and await pg.evaluate("document.querySelector('#coach').hidden"), 'Tour must complete all 19 steps'
     # Archie hints and the mobile menu
     await pg.evaluate('window.__ccarf.hints(true)')
     await nav_go(pg,w,'map'); await pg.wait_for_timeout(300)
@@ -140,6 +143,7 @@ async def run(b,w,h,scheme,tag,errs):
     sw=await pg.evaluate("document.documentElement.scrollWidth-window.innerWidth")
     st=await pg.evaluate("JSON.stringify({seen:Object.keys(window.__ccarf.store().answers).length,mocks:window.__ccarf.store().mocks.length,drill:window.__ccarf.store().drill})")
     print(tag,'hscroll',sw,st)
+    assert sw == 0, 'Page must not overflow horizontally'
     await ctx.close()
 
 async def main():

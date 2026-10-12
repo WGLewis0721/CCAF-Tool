@@ -1,4 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C111B">
+<meta name="description" content="Practice Claude Certified Architect, Foundations with scenario questions, flashcards, visual lessons, a timed mock exam, and Archie, your study guide.">
 <title>CCAR-F Study Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Saira:wght@300..700&family=Share+Tech+Mono&display=swap">
 <style>
 :root{
@@ -694,7 +703,10 @@ td{border-bottom:1px solid var(--line)}
 }
 @media (min-width:861px){#mbub{display:none!important}}
 @media (prefers-reduced-motion:reduce){#fairy,#fairy .spr,.mnav-links,.mnav-tog svg{transition:none}}
+/*__DESIGN__*/
 </style>
+</head>
+<body>
 <div id="app"></div>
 <script>
 (function(){
@@ -794,7 +806,7 @@ const ICON={
  map:'<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/>',
  learn:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5"/>',
  library:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5"/>'};
-const NAV=[['home','Home'],['map','Map'],['practice','Practice'],['learn','Learn']];
+const NAV=[['home','Home'],['map','Campaign Mode'],['practice','Practice'],['learn','Learn']];
 const NAVG={guide:'learn',library:'learn',cards:'practice',mock:'practice'};
 
 let store={answers:{},cards:{},rate:{},flags:{},mocks:[],days:[],examDate:'',view:'home',drill:{tell:{n:0,c:0},shape:{n:0,c:0},axis:{n:0,c:0}},plan:{},planStart:'',guide:{done:{}}};
@@ -843,10 +855,10 @@ function navBtn(n){return `<button data-go="${n[0]}" ${(NAVG[view]||view)===n[0]
 function shell(inner){
   let dl='';
   if(store.examDate){const diff=Math.ceil((new Date(store.examDate+'T00:00:00')-new Date())/86400000);if(diff>=0)dl=`<div><b>${diff}</b>day${diff===1?'':'s'} to exam</div>`;}
-  return `<div class="app"><header class="rail"><button class="brand" data-go="home" aria-label="CCAR-F Study Tool, home">${markHtml()}<b>CCAR-F</b><span>Claude Certified Architect, Foundations</span></button>
+  return `<a class="skip-link" href="#study-main">Skip to study content</a><div class="app"><header class="rail"><button class="brand" data-go="home" aria-label="CCAR-F Study Tool, home">${markHtml()}<b>CCAR-F</b><span>Claude Certified Architect, Foundations</span></button>
    <nav class="rnav" aria-label="Sections">${NAV.map(n=>navBtn(n)).join('')}</nav>
    <div class="rfoot"><button class="palbtn" data-act="pal"><span>Jump to</span><span class="kbd">Ctrl K</span></button>${dl}<div class="stk"><b>${streak()}</b> day streak</div></div><span class="dock" aria-hidden="true"></span><button class="mpal" data-act="pal">Jump to</button></header>
-   <main class="main">${hudHtml()}${inner}</main></div>
+   <main class="main" id="study-main" tabindex="-1">${hudHtml()}${inner}</main></div>
    ${mnavHtml()}`;
 }
 function render(){
@@ -957,12 +969,12 @@ function vHomeOld(){
 /* ---------- Practice ---------- */
 function practiceHead(cur){
   const tabs=[['q','Questions'],['cards','Flashcards'],['mock','Mock exam'],['tell','Spot the tell'],['shape','Name the shape'],['axis','Pick the axis']];
-  return `<div class="pagehead"><h1>Practice</h1><p>Questions are written in the exam's style, and the answer choices shuffle every time, so focus on the reasoning rather than the position of the answer.</p></div>
-   <div class="subtabs" role="tablist">${tabs.map(t=>`<button role="tab" data-act="ptab" data-v="${t[0]}" ${cur===t[0]?'aria-current="true"':''}>${t[1]}</button>`).join('')}</div>`;}
+  return `<div class="pagehead"><h1>Practice</h1><p>Scenario decisions, explained. Answer choices shuffle, so follow the reasoning.</p></div>
+   <div class="subtabs" role="tablist">${tabs.map(t=>`<button role="tab" aria-selected="${cur===t[0]}" data-act="ptab" data-v="${t[0]}" ${cur===t[0]?'aria-current="true"':''}>${t[1]}</button>`).join('')}</div>`;}
 function learnHead(cur){
   const tabs=[['gtab','walk','Lessons'],['ltab','playbook','Decision rules'],['ltab','scenarios','Scenarios'],['gtab','trig','Trigger words'],['gtab','items','Key terms'],['gtab','maps','Diagrams'],['ltab','plan','Study plan'],['ltab','syllabus','Syllabus']];
-  return `<div class="pagehead"><h1>Learn</h1><p>Everything you need to study is here: a lesson for each domain, the ten decision rules, the six scenarios, the trigger words, and your study plan.</p></div>
-   <div class="subtabs" role="tablist">${tabs.map(t=>`<button role="tab" data-act="${t[0]}" data-v="${t[1]}" ${cur===t[0]+':'+t[1]?'aria-current="true"':''}>${t[2]}</button>`).join('')}</div>`;}
+  return `<div class="pagehead"><h1>Learn</h1><p>See the mechanisms. Learn the rules. Explore the diagrams and common traps.</p></div>
+   <div class="subtabs" role="tablist">${tabs.map(t=>`<button role="tab" aria-selected="${cur===t[0]+':'+t[1]}" data-act="${t[0]}" data-v="${t[1]}" ${cur===t[0]+':'+t[1]?'aria-current="true"':''}>${t[2]}</button>`).join('')}</div>`;}
 function vPractice(){
   const head=practiceHead(sub.practice);
   if(sub.practice==='q')return head+(sess?vSession():vSetup());
@@ -1398,3 +1410,5 @@ else render();
 window.__ccarf={Q,CARDS,store:()=>store,go,hint:()=>showHint(true),hints:v=>{hintsOn=v;if(!v)hideHint();}};
 })();
 </script>
+</body>
+</html>

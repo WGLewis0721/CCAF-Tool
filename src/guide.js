@@ -166,6 +166,13 @@ const DIAGS=[
  {n:'Hooks beat prompts',t:'1.4, 1.5',f:dgHook,m:'An interception hook is a guarantee, a prompt is a request. Use hooks for refund limits and identity checks, and a normalization hook to unify dates and status codes from different tools.',x:'Stronger prompt wording or few-shot examples for a rule that must always hold.'},
  {n:'Batch math',t:'4.5',f:dgBatch,m:'Work backward from the SLA: the wait for the next submission plus 24 hours of processing must fit inside it. Batches are 50% cheaper but have no latency guarantee.',x:'Batch for a blocking pre-merge check, or for any workflow that needs tool calls mid-request.'},
  {n:'Validate, then retry wisely',t:'4.3, 4.4',f:dgRetry,m:'Retry when feedback can fix the problem: format or structure. When the value is absent from the source, make the field nullable and route to review instead.',x:'Retrying the same request unchanged, or retrying to recover information that does not exist.'}];
+function lessonVisual(d){
+  if(d===1)return DIAGS[0];
+  if(d===3)return DIAGS[2];
+  if(d===4)return DIAGS[5];
+  if(d===2)return {n:'Clear tools, better routing',f:()=>gS(300,'A request is routed using clear descriptions to a scoped tool, which returns a result or a structured error.',gB(100,10,240,44,['Request'])+gP('M220 54 V90')+gB(80,90,280,52,['Description + scoped tools'])+gP('M220 142 V178')+gB(100,178,240,44,['Selected tool runs'])+gP('M220 222 V252')+gB(60,252,320,44,['Result or structured error'])),m:'Descriptions tell the model when to use a tool. Scope tools to the agent\'s role.',x:'Adding a router before fixing ambiguous tool descriptions.'};
+  return {n:'Keep facts connected to sources',f:()=>gS(300,'Source-backed findings enter structured case facts, survive a compact summary, and stay available for the next turn.',gB(90,10,260,44,['Findings + sources'])+gP('M220 54 V90')+gB(90,90,260,44,['Structured case facts'])+gP('M220 134 V170')+gB(90,170,260,44,['Compact with a summary'])+gP('M220 214 V250')+gB(90,250,260,44,['Next turn keeps the facts'])),m:'Keep claim and source pairs in structured state. Preserve critical facts when summarizing.',x:'A larger context window does not guarantee the model attends to the right facts.'};
+}
 
 /* ----- views ----- */
 function bossStats(s){
@@ -191,10 +198,13 @@ function vGuide(){
 }
 function vWalk(){
   const d=sub.glevel;const L=GLEVELS[d];const ds=domStats()[d];const done=store.guide.done;
+  const visual=lessonVisual(d);
   const chips=[1,2,3,4,5].map(n=>`<button class="${done[n]?'cl':''}" data-act="glevel" data-v="${n}" aria-pressed="${n===d}">Level ${n}</button>`).join('');
   const cleared=Object.keys(done).filter(k=>done[k]).length;
   return `<div class="stack"><div class="seg">${chips}</div><div class="prail" aria-label="Levels cleared">${[1,2,3,4,5].map(n=>`<i class="${done[n]?'ok':n===d?'cur':''}"></i>`).join('')}</div><span class="small muted">${cleared} of 5 levels cleared</span></div>
-  <section class="panel hero chap" style="--c:var(--d${d})"><div class="chapnum">Level ${d}</div><h2 class="disp">${esc(DOM[d].n)}</h2><p class="muted" style="max-width:56ch">${esc(L.tag)}</p>${archie('point',`This lesson covers Domain ${d}, which is ${DOM[d].w}% of the exam. Read the key ideas and the common traps, and then try the practice set at the end.`)}
+  <section class="panel hero chap" style="--c:var(--d${d})"><div class="chapnum">Level ${d}</div><h2 class="disp">${esc(DOM[d].n)}</h2><p class="muted" style="max-width:56ch">${esc(L.tag)}</p>
+   <div class="lesson-visual">${visual.f()}<div class="lesson-caption"><h3>${esc(visual.n)}</h3><p>${visual.m}</p><details class="lesson-reason"><summary>Spot the trap</summary><p>${esc(visual.x)}</p></details></div></div>
+   ${archie('point',`This lesson covers Domain ${d}, which is ${DOM[d].w}% of the exam. Read the key ideas and the common traps, and then try the practice set at the end.`)}
    <div class="xp"><div class="split small"><b>Worth ${DOM[d].w}% of the exam</b><span class="muted">Your mastery ${Math.round(ds.ready*100)}%, ${ds.seen} of ${ds.total} questions seen</span></div><div class="xpbar"><i style="width:${Math.max(2,Math.round(ds.ready*100))}%"></i></div></div></section>
   <div class="cols two">
    <div class="stack">

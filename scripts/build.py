@@ -7,6 +7,8 @@ Usage:
 """
 import pathlib
 import sys
+import base64
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
@@ -37,7 +39,16 @@ def build() -> str:
 
     # Insert the app script first, then the data, so neither can collide with the other's marker.
     page = template.replace("/*__APP__*/", read(SRC / "app.js").strip())
-    return page.replace("/*__DATA__*/", data)
+    page = page.replace("/*__DATA__*/", data)
+    page = page.replace("/*__DESIGN__*/", read(SRC / "design.css"))
+
+    def asset(match: re.Match) -> str:
+        path = SRC / "assets" / (match.group(1) + ".webp")
+        if not path.is_file():
+            sys.exit(f"Build failed: missing asset {path.name}")
+        return "data:image/webp;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+
+    return re.sub(r"__ASSET_([a-z0-9-]+)__", asset, page)
 
 
 def main() -> None:

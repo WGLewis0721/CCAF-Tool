@@ -167,7 +167,7 @@ function questLog(){
 }
 function vMap(){
   const sp=selPanel();const sk=streakHtml();const seenAll=Q.filter(q=>store.answers[q.id]).length;
-  return `<div class="pagehead"><h1>Your exam map</h1><p>Each region is one exam domain, and each marker is one of the 30 task statements from the exam guide. Markers stay dim until you practice them, and they turn blue once 80% of your latest answers are correct. Click a marker to see your progress and start practicing.</p></div>
+  return `<div class="pagehead"><h1>Campaign Mode</h1><p>Five domains. Thirty tasks. Select a marker to see your progress and practice. Blue means mastered.</p></div>
   <section class="mapwrap"><div class="mapscroll">${campMap()}</div><div class="maplegend"><span><i style="background:${STC.own}"></i>Mastered</span><span><i style="background:${STC.cont}"></i>In progress</span><span><i style="background:${STC.foe}"></i>Needs work</span><span><i style="background:${STC.fog}"></i>Not started</span><span><i style="background:#7A2420"></i>Exam scenario</span><span><i style="background:#FF9A3C"></i>Common wrong answer</span></div></section>
   <section class="console"><div class="cpanel minimap">${miniMap()}<div class="mm-t">Overview</div></div><div class="cpanel selinfo">${sp.head}${sp.body}</div><div class="cpanel cmdcard" role="group" aria-label="Actions">${sp.cmds.map(cmdBtn).join('')}</div></section>
   <div class="cols two"><section class="panel quests"><h3>Goals</h3>${questLog()}</section>
@@ -177,12 +177,13 @@ function vMap(){
 
 /* ===================== Home: landing page and mode select ===================== */
 const MODES=[
- {k:'1',id:'map',t:'Exam map',i:'map',d:'See all 30 task statements on one map, find your weak spots, and start practice from any of them.',m:'Best for deciding what to study next',act:'cgo',v:'map'},
- {k:'2',id:'practice',t:'Practice questions',i:'atk',d:'Answer scenario questions written like the real exam, and read why each wrong option fails.',m:'About 10 minutes per set of 10',act:'quick',v:''},
- {k:'3',id:'cards',t:'Flashcards',i:'train',d:'Review key facts and trigger words with spaced repetition, so the details stick between sessions.',m:'5 minutes, any time',act:'cgo',v:'cards'},
- {k:'4',id:'mock',t:'Mock exam',i:'mock',d:'Take 60 questions in 120 minutes under real conditions, then get a domain-by-domain report.',m:'2 hours, once a week',act:'cgo',v:'mock'},
- {k:'5',id:'learn',t:'Lessons',i:'scout',d:'Read one lesson per domain, plus the ten decision rules, the six scenarios, and your study plan.',m:'15 to 20 minutes per lesson',act:'cgo',v:'learn'},
- {k:'6',id:'tour',t:'Tour with Archie',i:'coach',d:'Let Archie walk you through this app\'s own front end and back end to see each domain in practice.',m:'About 10 minutes, start here if you are new',act:'coach',v:''}];
+ {k:'1',id:'map',t:'Campaign Mode',i:'map',d:'Find your next move across 30 task markers.',m:'Your progress, mapped',act:'cgo',v:'map'},
+ {k:'2',id:'practice',t:'Practice questions',i:'atk',d:'Make the call. See why each answer wins or loses.',m:'10 questions / 10 minutes',act:'quick',v:''},
+ {k:'3',id:'cards',t:'Flashcards',i:'train',d:'Keep key facts fresh with spaced repetition.',m:'A five-minute review',act:'cgo',v:'cards'},
+ {k:'4',id:'mock',t:'Mock exam',i:'mock',d:'Test your judgment. Get a report by domain.',m:'60 questions / 120 minutes',act:'cgo',v:'mock'},
+ {k:'5',id:'learn',t:'Lessons',i:'scout',d:'See the mechanisms, rules, and common traps.',m:'Five domains, explained',act:'cgo',v:'learn'},
+ {k:'6',id:'tour',t:'Tour with Archie',i:'coach',d:'See exam concepts at work in this app.',m:'A ten-minute guided tour',act:'coach',v:''}];
+const MODE_ART={map:'__ASSET_mode-map__',practice:'__ASSET_mode-practice__',cards:'__ASSET_mode-cards__',mock:'__ASSET_mode-mock__',learn:'__ASSET_mode-learn__',tour:'__ASSET_mode-tour__'};
 CMDI.map='<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15" fill="none" stroke="#9EE9FF" stroke-width="1.8" stroke-linejoin="round"/>';
 const ARCH_TIPS=['Most exam questions turn on one decision rule. When two answers both sound right, ask which rule is in play.',
  'If something must always happen, the right answer usually enforces it in code rather than in the prompt.',
@@ -196,41 +197,28 @@ function vHome(){
   const fresh=!seen;
   const greet=fresh?'Hi, I am Archie. Pick a mode below, or press 6 and I will show you around first.':`Welcome back. Your readiness is ${o}%, and you have mastered ${cap} of the 30 tasks. I recommend Domain ${bd||1} next.`;
   const cta=fresh?`<button class="btn primary big" data-act="coach">Take the 10-minute tour</button><button class="btn big" data-act="quick" data-d="0">Start practicing now</button>`
-    :`<button class="btn primary big" data-act="quick" data-d="${bd}">Continue with Domain ${bd||1}</button><button class="btn big" data-act="cgo" data-v="map">Open your exam map</button>`;
-  const modes=MODES.map(m=>`<button class="mode" data-act="${m.act}" ${m.v?`data-v="${m.v}"`:''} ${m.act==='quick'?`data-d="${bd}"`:''} data-mk="${m.k}"><span class="mk">${m.k}</span><span class="mi"><svg viewBox="0 0 24 24" aria-hidden="true">${CMDI[m.i]}</svg></span><span class="mt">${m.t}</span><span class="md">${m.d}</span><span class="mm">${m.m}</span></button>`).join('');
-  const get=[[Q.length,'scenario questions','Every question maps to one of the 30 task statements, and every answer comes with an explanation of why the other options fail.'],
-   ['60','question mock exam','It is timed and formatted like the real exam, and it gives you a scaled score estimate and a list of what to review.'],
-   [CARDS.length,'flashcards','They use spaced repetition and cover exam facts, every domain, and the trigger words that signal each answer pattern.'],
-   ['3','quick drills','Spot the tell, Name the shape, and Pick the axis train the fast pattern recognition the exam rewards.'],
-   ['5','domain lessons','Each lesson covers the key ideas, the common traps, and a practice set, alongside ten decision rules and six scenario briefs.'],
-   [COACH.length,'step guided tour','Archie shows how each domain applies to real code by walking through how this app is built.']];
-  const loop=[['Learn','Read the lesson for a domain and the decision rules behind it. You will know what the exam expects before you are tested on it.'],
-   ['Practice','Answer scenario questions and read every explanation. Each one shows you why the best answer wins and why the tempting ones lose.'],
-   ['Lock it in','Use flashcards and quick drills for a few minutes a day. Short reviews keep facts and patterns fresh between longer sessions.'],
-   ['Prove it','Take a timed mock exam each week. Your readiness score and map update after every answer, so you always know where you stand.']];
-  const bridge=[[1,'Claude Agent SDK and subagents','You will be able to design agent loops, coordinators, and hooks that enforce rules in code.'],
-   [2,'MCP servers and tool definitions','You will be able to write tool descriptions models route correctly, scope tools, and return structured errors.'],
-   [3,'Claude Code','You will be able to configure CLAUDE.md, skills, commands, and plan mode for a team and run Claude Code in CI.'],
-   [4,'Claude API and Message Batches','You will be able to get reliable structured output with tool use and choose between batch and synchronous calls.'],
-   [5,'Long sessions and multi-agent systems','You will be able to keep facts and sources intact, escalate at the right moments, and calibrate confidence.']];
-  return `<section class="hero2"><div class="hero-bg" inert aria-hidden="true">${campMap()}</div>
+    :`<button class="btn primary big" data-act="quick" data-d="${bd}">Continue with Domain ${bd||1}</button><button class="btn big" data-act="cgo" data-v="map">Open Campaign Mode</button>`;
+  const modes=MODES.map(m=>`<button class="mode" data-act="${m.act}" ${m.v?`data-v="${m.v}"`:''} ${m.act==='quick'?`data-d="${bd}"`:''} data-mk="${m.k}"><span class="mk" aria-label="Keyboard shortcut ${m.k}">${m.k}</span><span class="mi"><img src="${MODE_ART[m.id]}" alt="" width="240" height="240" loading="lazy"></span><span class="mt">${m.t}</span><span class="md">${m.d}</span><span class="mm">${m.m}</span></button>`).join('');
+  const get=[[Q.length,'scenario questions','With answer-by-answer reasoning'],['60','question mock exam','Timed, with a domain report'],[CARDS.length,'flashcards','Spaced repetition built in'],['3','quick drills','Train pattern recognition'],['5','domain lessons','Rules, diagrams, and traps'],[COACH.length,'tour stops','Real concepts in real code']];
+  const loop=[['Learn','See a mechanism. Understand the rule.','learn'],['Practice','Make a decision. Read the reasoning.','practice'],['Lock it in','Review the facts. Spot the pattern.','cards'],['Prove it','Take a mock. Find your next focus.','mock']];
+  const bridge=[[1,'Claude Agent SDK','Loops, coordinators, and code gates.'],[2,'MCP tools','Clear descriptions and scoped tools.'],[3,'Claude Code','Team configuration and workflows.'],[4,'Claude API','Structured output and batch decisions.'],[5,'Long sessions','Context, sources, and reliability.']];
+  const sample=gS(126,'A tool request passes through a code gate. Allowed actions run; blocked actions stop.',gB(10,10,120,44,['Request'])+gP('M130 32 H160')+gB(160,10,120,44,['Code gate'],'rule-gate')+gP('M280 32 H310')+gB(310,10,120,44,['Run'])+gP('M220 54 V84')+gB(160,86,120,36,['Stop']));
+  return `<section class="hero2"><div class="hero-bg" aria-hidden="true"><img src="__ASSET_tactical-atlas__" alt="" width="1440" height="814" fetchpriority="high"></div>
    <div class="hero-in"><div class="hero-copy"><span class="kicker">Claude Certified Architect, Foundations</span>
-    <h1>Turn what you know about Claude into exam-ready judgment.</h1>
-    <p class="lede">The CCAR-F exam asks you to make design decisions about Claude Code, the Claude Agent SDK, the Claude API, and MCP in realistic scenarios. This study tool lets you practice those exact decisions, explains every answer, and shows you where you stand at every step.</p>
-    <div class="row">${cta}</div></div>
-    <div class="hero-guide">${spr(fresh?'cheer':'idle')}<div class="bubble"><b>Archie</b><span id="archtip">${greet}</span></div></div></div>
+    <h1>Build <span class="keep-word">exam-ready</span> judgment.</h1>
+    <p class="lede">See the patterns. Understand the reasoning. Practice Claude's design decisions and watch your progress grow.</p>
+    <div class="row hero-actions">${cta}</div></div>
+    <div class="hero-guide"><div class="hero-scout">${spr(fresh?'cheer':'idle')}<div class="bubble"><b>Archie</b><span id="archtip">${greet}</span></div></div><div class="first-pattern"><h2>Must always happen? Use a code gate.</h2>${sample}<details class="pattern-reason"><summary>See why this wins</summary><p>${esc(RULES[1].fix)}</p><p class="muted">Stronger wording still leaves enforcement to the model.</p></details></div></div></div>
    <div class="facts"><div><b>60</b><span>questions in 120 minutes</span></div><div><b>720</b><span>out of 1,000 to pass</span></div><div><b>4 of 6</b><span>scenarios appear on your exam</span></div><div><b>${fresh?'5':o+'%'}</b><span>${fresh?'domains and 30 task statements':'your current readiness'}</span></div></div></section>
-  <section class="landsec"><div class="sechead"><h2>Choose how you want to study</h2><p>Pick a mode to begin. You can also press its number key, and you can switch modes at any time from the menu.</p></div><div class="modes">${modes}</div></section>
-  <section class="landsec"><div class="sechead"><h2>What you will get</h2><p>Everything is built from the official exam guide and Anthropic's documentation, and it all works offline in your browser.</p></div>
+  <section class="landsec"><div class="sechead"><h2>Choose how you want to study</h2><p>One goal, six ways in. Number keys 1 to 6 jump straight to a mode.</p></div><div class="modes">${modes}</div></section>
+  <section class="landsec"><div class="sechead"><h2>What you will get</h2><p>Built from the exam guide and Anthropic's documentation.</p></div>
    <div class="getgrid">${get.map(g=>`<div class="get"><b>${g[0]}</b><span class="gt">${g[1]}</span><p>${g[2]}</p></div>`).join('')}</div></section>
-  <section class="landsec"><div class="sechead"><h2>What to expect</h2><p>Most people need about four weeks of short, steady sessions. Each session follows the same simple loop.</p></div>
-   <ol class="loop">${loop.map((l,i)=>`<li><span class="ln">${i+1}</span><b>${l[0]}</b><p>${l[1]}</p></li>`).join('')}</ol></section>
-  <section class="landsec bridge"><div class="sechead"><h2>From knowing the concepts to mastering the products</h2><p>Most people who take this exam already know what an agent loop or a CLAUDE.md file is. The exam tests something harder: choosing the right mechanism when two answers both sound reasonable. This tool closes that gap in three ways.</p></div>
-   <div class="virtues"><div><b>Decisions, not definitions</b><p>Every question is a design choice with a full explanation, so you learn the reasoning behind each answer instead of memorizing it.</p></div>
-    <div><b>Rules you can reuse</b><p>Ten decision rules and five wrong-answer patterns carry over directly to the calls you make when you build with Claude at work.</p></div>
-    <div><b>Real applications</b><p>Archie shows each domain at work in real code, so the ideas connect to something you can see and run.</p></div></div>
-   <div class="prodmap">${bridge.map(b=>`<div class="pm" style="--c:var(--d${b[0]})"><span class="pd">Domain ${b[0]}, ${DOM[b[0]].w}%</span><b>${esc(DOM[b[0]].n)}</b><span class="pp">${b[1]}</span><p>${b[2]}</p></div>`).join('')}</div></section>
-  <section class="landsec endcta"><h2>Ready when you are.</h2><p>Your progress saves automatically in this browser, so you can stop and pick up again whenever you like.</p><div class="row">${cta}</div></section>`;
+  <section class="landsec"><div class="sechead"><h2>What to expect</h2><p>A repeatable loop, at your pace.</p></div>
+   <ol class="loop" aria-label="Study loop">${loop.map(l=>`<li><img src="${MODE_ART[l[2]]}" alt="" width="240" height="240" loading="lazy"><b>${l[0]}</b><p>${l[1]}</p></li>`).join('')}</ol></section>
+  <section class="landsec bridge"><div class="sechead"><h2>Know the concept. Choose the mechanism.</h2><p>Learn what works, why it works, and when to use it.</p></div>
+   <div class="virtues"><div><b>Decisions, not definitions</b><p>Reason through the tempting wrong answers.</p></div><div><b>Rules you can reuse</b><p>Ten rules. Five wrong-answer patterns.</p></div><div><b>Real applications</b><p>Connect each idea to this app's code.</p></div></div>
+   <div class="prodmap">${bridge.map(b=>`<div class="pm" style="--c:var(--d${b[0]})"><span class="domain-seal" aria-hidden="true">${b[0]}</span><div class="domain-name"><span class="pd">Domain ${b[0]} / ${DOM[b[0]].w}% of exam</span><b>${esc(DOM[b[0]].n)}</b></div><span class="pp">${b[1]}</span><p>${b[2]}</p></div>`).join('')}</div></section>
+  <section class="landsec endcta"><h2>Ready when you are.</h2><p>Progress saves in this browser. Pick up where you left off.</p><div class="row">${cta}</div></section><footer class="site-note">Unofficial study tool. Not affiliated with or endorsed by Anthropic.</footer>`;
 }
 setInterval(()=>{const el=document.getElementById('archtip');if(!el||coach.open||document.hidden)return;tipI=(tipI+1)%ARCH_TIPS.length;el.style.opacity=0;setTimeout(()=>{el.textContent=ARCH_TIPS[tipI];el.style.opacity=1;},250);},9000);
 document.addEventListener('keydown',e=>{
@@ -423,8 +411,13 @@ function peekMnav(ms){clearTimeout(mnavT);setMnav(true);mnavT=setTimeout(()=>set
 function mnavHtml(){return `<nav class="mnav ${mnavOpen?'open':''}" aria-label="Sections"><button class="mnav-archie" data-act="coach" aria-label="Open Archie, your guide">${spr('idle')}</button><div class="mnav-links" id="mnavlinks" ${mnavOpen?'':'inert'}>${NAV.map(n=>navBtn(n)).join('')}</div><button class="mnav-tog" data-act="mnavtog" aria-controls="mnavlinks" aria-expanded="${mnavOpen}" aria-label="${mnavOpen?'Collapse':'Expand'} the menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></nav>`;}
 function afterRender(){
   syncFairy();
+  applyMotionPreferences();
   if(view!==lastView){const first=lastView===null;lastView=view;hideHint();if(isMobile())peekMnav(first?4000:3000);queueHint(first?2600:1600);}
 }
+function applyMotionPreferences(){
+  document.querySelectorAll('svg').forEach(svg=>{if(typeof svg.pauseAnimations==='function'){if(reduceMo())svg.pauseAnimations();else svg.unpauseAnimations();}});
+}
+window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',applyMotionPreferences);
 function coachOpen(i){coach.open=true;coach.turns=0;if(typeof i==='number')coach.i=i;hideHint();syncFairy();coachStep();}
 function coachClose(){coach.open=false;coachEl.hidden=true;ringEl.hidden=true;syncFairy();if(coach.i>=COACH.length-1)coach.i=0;}
 function coachNext(){            // one turn of the tour loop
