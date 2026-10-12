@@ -36,11 +36,15 @@ def build() -> str:
     data += "const CARDS=[];\n" + read(CONTENT / "cards.js") + "\n"
     data += read(CONTENT / "drills.js") + "\n"
     data += read(SRC / "guide.js") + "\n"
+    data += read(CONTENT / "sources.js") + "\n"
 
     # Insert the app script first, then the data, so neither can collide with the other's marker.
     page = template.replace("/*__APP__*/", read(SRC / "app.js").strip())
     page = page.replace("/*__DATA__*/", data)
     page = page.replace("/*__DESIGN__*/", read(SRC / "design.css"))
+    page = page.replace("/*__EXPERIENCE__*/", read(SRC / "experience.js"))
+    page = page.replace("/*__EXPERIENCE_CSS__*/", read(SRC / "experience.css"))
+    page = page.replace("<!--__ART__-->", read(SRC / "art.html"))
 
     def asset(match: re.Match) -> str:
         path = SRC / "assets" / (match.group(1) + ".webp")

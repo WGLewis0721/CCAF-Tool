@@ -180,16 +180,7 @@ function bossStats(s){
   qs.forEach(q=>{const a=store.answers[q.id];if(a){seen++;if(a.last)right++;}});
   return {total:qs.length,seen,right,hp:Math.round(100-100*right/Math.max(1,qs.length))};
 }
-function glyph(i){
-  const c=`var(--d${i+1})`;
-  const g=[
-   `<rect x="10" y="12" width="36" height="32" rx="6" fill="none" stroke="${c}" stroke-width="3"/><path d="M18 24h20M18 32h14" stroke="${c}" stroke-width="3" stroke-linecap="round"/><circle cx="44" cy="46" r="7" fill="${c}"/>`,
-   `<rect x="18" y="8" width="20" height="14" rx="3" fill="${c}"/><rect x="11" y="24" width="34" height="14" rx="3" fill="none" stroke="${c}" stroke-width="3"/><rect x="5" y="40" width="46" height="11" rx="3" fill="none" stroke="${c}" stroke-width="3"/>`,
-   `<circle cx="28" cy="28" r="20" fill="none" stroke="${c}" stroke-width="3"/><circle cx="28" cy="28" r="10" fill="none" stroke="${c}" stroke-width="3"/><circle cx="46" cy="12" r="5" fill="${c}"/>`,
-   `<circle cx="28" cy="28" r="20" fill="none" stroke="${c}" stroke-width="3"/><path d="M12 24q8-8 16 0t16 0M12 34q8-8 16 0t16 0" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`,
-   `<rect x="6" y="16" width="26" height="24" rx="5" fill="none" stroke="${c}" stroke-width="3"/><path d="M30 28h20m-8-8l8 8-8 8" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`];
-  return `<svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">${g[i]}</svg>`;
-}
+function glyph(i){return studyArt(['messages','workshop','controller','validation','provenance'][i]);}
 function vGuide(){
   if(sub.guide==='boss'||sub.guide==='beast')sub.guide='walk';
   const head=learnHead('gtab:'+sub.guide);
@@ -198,18 +189,18 @@ function vGuide(){
 }
 function vWalk(){
   const d=sub.glevel;const L=GLEVELS[d];const ds=domStats()[d];const done=store.guide.done;
-  const visual=lessonVisual(d);
+
   const chips=[1,2,3,4,5].map(n=>`<button class="${done[n]?'cl':''}" data-act="glevel" data-v="${n}" aria-pressed="${n===d}">Level ${n}</button>`).join('');
   const cleared=Object.keys(done).filter(k=>done[k]).length;
   return `<div class="stack"><div class="seg">${chips}</div><div class="prail" aria-label="Levels cleared">${[1,2,3,4,5].map(n=>`<i class="${done[n]?'ok':n===d?'cur':''}"></i>`).join('')}</div><span class="small muted">${cleared} of 5 levels cleared</span></div>
   <section class="panel hero chap" style="--c:var(--d${d})"><div class="chapnum">Level ${d}</div><h2 class="disp">${esc(DOM[d].n)}</h2><p class="muted" style="max-width:56ch">${esc(L.tag)}</p>
-   <div class="lesson-visual">${visual.f()}<div class="lesson-caption"><h3>${esc(visual.n)}</h3><p>${visual.m}</p><details class="lesson-reason"><summary>Spot the trap</summary><p>${esc(visual.x)}</p></details></div></div>
+   ${lessonPreview(d)}
    ${archie('point',`This lesson covers Domain ${d}, which is ${DOM[d].w}% of the exam. Read the key ideas and the common traps, and then try the practice set at the end.`)}
    <div class="xp"><div class="split small"><b>Worth ${DOM[d].w}% of the exam</b><span class="muted">Your mastery ${Math.round(ds.ready*100)}%, ${ds.seen} of ${ds.total} questions seen</span></div><div class="xpbar"><i style="width:${Math.max(2,Math.round(ds.ready*100))}%"></i></div></div></section>
   <div class="cols two">
    <div class="stack">
     <section class="panel stack" style="--c:var(--d${d})"><h3>Key moves</h3><ol class="moves">${L.moves.map(m=>`<li><span>${m}</span></li>`).join('')}</ol></section>
-    <section class="panel stack"><h3>Objectives</h3><div>${TS.filter(t=>t.d===d).map(t=>{const s=tsStats(t.id);return `<div class="tsrow" style="--c:var(--d${d})"><span class="id">${t.id}</span><span>${esc(t.t)}</span><div class="ctl"><span class="small muted">${s.total?`${s.seen} of ${s.total} seen${s.seen?', '+pct(s.right,s.seen)+'% right':''}`:'no questions yet'}</span>${s.total?`<button class="btn ghost" data-act="tsdrill" data-v="${t.id}">Drill</button>`:''}</div></div>`;}).join('')}</div></section>
+    <section class="panel stack"><h3>Objectives</h3><div>${TS.filter(t=>t.d===d).map(t=>{const s=tsStats(t.id);return `<div class="tsrow" data-task="${t.id}" style="--c:var(--d${d})"><span class="id">${t.id}</span><span>${esc(t.t)}</span><div class="ctl"><span class="small muted">${s.total?`${s.seen} of ${s.total} seen${s.seen?', '+pct(s.right,s.seen)+'% right':''}`:'no questions yet'}</span>${s.total?studyLink(`practice/questions?task=${t.id}&count=10`,'Practice'):''}${guideLink(taskPage(t.id),`Guide p. ${taskPage(t.id)}`)}</div></div>`;}).join('')}</div></section>
    </div>
    <div class="stack">
     <aside class="callout tip"><b>Pro tip</b><p>${esc(L.tip)}</p></aside>
@@ -217,6 +208,7 @@ function vWalk(){
     <aside class="callout secret"><b>Secret</b><p>${L.secret}</p></aside>
    </div>
   </div>
+  ${lessonSelfChecks(d)}
   <section class="panel stack"><div class="row"><button class="btn primary" data-act="quick" data-d="${d}">Run the Level ${d} drill</button><label class="check" style="grid-template-columns:24px auto;padding:0"><input type="checkbox" data-gdone="${d}" ${done[d]?'checked':''}><span>Mark this level cleared</span></label></div>
    <div class="row">${d>1?`<button class="btn" data-act="glevel" data-v="${d-1}">Previous level</button>`:''}${d<5?`<button class="btn" data-act="glevel" data-v="${d+1}">Next level</button>`:''}</div></section>`;
 }
@@ -244,12 +236,9 @@ function vItems(){
   const cats=['All'].concat([...new Set(ITEMS.map(i=>i.c))]);
   const list=ITEMS.filter(i=>sub.icat==='All'||i.c===sub.icat);
   return `<section class="panel stack"><h2>Item compendium</h2><p class="muted" style="max-width:62ch">Everything you carry into the exam, with when to equip it and what it is commonly confused with.</p><div class="seg">${cats.map(c=>`<button data-act="icat" data-v="${esc(c)}" aria-pressed="${sub.icat===c}">${esc(c)}</button>`).join('')}</div></section>
-  <div class="itemgrid">${list.map(i=>`<article class="item"><b class="iname">${esc(i.n)}</b><span class="tag" style="align-self:flex-start">${esc(i.k)}</span><p class="small"><b>Equip when:</b> ${i.u}</p><p class="small muted"><b>Not for:</b> ${i.x}</p></article>`).join('')}</div>`;
+  <div class="itemgrid">${list.map(i=>`<article class="item"><b class="iname">${esc(i.n)}</b><span class="tag" style="align-self:flex-start">${esc(i.k)}</span><p class="small"><b>Equip when:</b> ${i.u}</p><p class="small muted"><b>Not for:</b> ${i.x}</p>${sourceLine(termTasks(i))}</article>`).join('')}</div>`;
 }
-function vMaps(){
-  return `<section class="panel stack"><h2>Maps</h2><p class="muted" style="max-width:62ch">Six flow diagrams for the ideas that show up again and again. Trace each path once with your finger and the scenarios will feel familiar.</p></section>
-  ${DIAGS.map(g=>`<section class="panel"><div class="cols two"><div>${g.f()}</div><div class="stack dgnote"><div><span class="tag">Task ${g.t}</span><h3 style="margin-top:8px">${esc(g.n)}</h3></div><div><b>Remember</b><p>${g.m}</p></div><div><b>The trap</b><p>${esc(g.x)}</p></div></div></div></section>`).join('')}`;
-}
+function vMaps(){return vDiagramLibrary();}
 
 /* ===== Trigger words (colleague cheat sheet, checked against the guide) ===== */
 const TRIG=[
@@ -297,10 +286,8 @@ CARDS.push(
 TRIG.forEach(r=>CARDS.push({d:6,f:'Trigger: '+r.t,b:r.a+'. '+r.w+'. '+r.n.replace(/<[^>]+>/g,'')}));
 function vTrig(){
   const cats=['All','Solid','Refined','Careful','Added'];
-  const list=TRIG.filter(r=>sub.tcat==='All'||r.v===sub.tcat);
-  const cnt=v=>TRIG.filter(r=>r.v===v).length;
-  return `<section class="panel stack"><h2>Trigger words</h2><p class="muted" style="max-width:66ch">A colleague's cheat sheet maps exam phrases to answer patterns. I checked each row against the official guide. <b>Solid</b> rows match it. <b>Refined</b> rows have the right idea but the exam adds a detail. <b>Careful</b> rows can mislead if you apply them blindly. <b>Added</b> rows are triggers the sheet lacks.</p>
-   <div class="seg">${cats.map(c=>`<button data-act="tcat" data-v="${c}" aria-pressed="${sub.tcat===c}">${c}${c==='All'?'':' '+cnt(c)}</button>`).join('')}</div></section>
-  <div class="stack">${list.map(r=>`<article class="panel trig" style="--c:var(--${r.v==='Solid'?'good':r.v==='Careful'?'bad':r.v==='Added'?'d4':'d1'})"><div class="split"><b class="tw">${esc(r.t)}</b><span class="vtag">${r.v}</span></div><div class="cols even"><div><b class="lbl">Answer pattern</b><p>${esc(r.a)}</p></div><div><b class="lbl">What to think</b><p>${esc(r.w)}</p></div></div><p class="small tn">${r.n}</p></article>`).join('')}</div>
-  <section class="panel stack"><h3>The sheet's key rules, checked</h3>${KEYRULES.map(k=>`<div class="krule"><b>${esc(k.t)}</b><span class="vtag" style="--c:var(--${k.v==='Solid'?'good':'d1'})">${k.v}</span><p class="small">${k.n}</p></div>`).join('')}</section>`;
+  const list=TRIG.filter(row=>sub.tcat==='All'||row.v===sub.tcat);
+  return `<section class="panel stack"><h2>Trigger words</h2><p class="muted">The original three-column cheat sheet, with guide checks and refinements kept beside each row.</p><div class="seg">${cats.map(category=>`<button data-act="tcat" data-v="${category}" aria-pressed="${sub.tcat===category}">${category}${category==='All'?'':' '+TRIG.filter(row=>row.v===category).length}</button>`).join('')}</div></section>
+  <table class="trigger-table"><caption class="sr-only">Exam trigger words, answer patterns, and what to think</caption><thead><tr><th scope="col">Trigger words</th><th scope="col">Answer pattern</th><th scope="col">What to think</th></tr></thead><tbody>${list.map(row=>`<tr class="trig"><td data-label="Trigger words"><b class="tw">${esc(row.t)}</b><span class="vtag">${esc(row.v)}</span></td><td data-label="Answer pattern">${esc(row.a)}</td><td data-label="What to think">${esc(row.w)}<details><summary>Guide check · ${esc(row.v)}</summary><p>${row.n}</p>${sourceLine(triggerTasks(row))}</details></td></tr>`).join('')}</tbody></table>
+  <section class="panel stack"><h3>The sheet's key rules, checked</h3>${KEYRULES.map(rule=>`<div class="krule"><b>${esc(rule.t)}</b><span class="vtag">${esc(rule.v)}</span><p class="small">${rule.n}</p></div>`).join('')}</section>`;
 }

@@ -9,12 +9,16 @@ CCAF-Tool is an unofficial study tool for the **Claude Certified Architect, Foun
 ## What's inside
 
 - **Home:** A landing page where you pick a study mode. Number keys 1 to 6 open each mode.
-- **Campaign Mode:** All 30 task statements on one map, colored by how well you know each one, with the six exam scenarios and the five common wrong-answer patterns.
+- **Campaign Mode:** All 30 task statements on the original game map, with refined artwork, actual progress colors, six scenarios, and five wrong-answer patterns. Switch to **Exam domains** for a written view with the same selection and progress.
 - **Practice:** 124 scenario questions with explanations, 128 flashcards with spaced repetition, a timed 60-question mock exam, and three quick drills.
-- **Learn:** A lesson for each of the five domains, ten decision rules, six scenario briefs, trigger words, diagrams, and a four-week study plan.
+- **Learn:** **Study plan comes first**, with direct links to exact lessons, question sets, decks, scenarios, and exercise briefs. Lessons teach worked decisions; Diagrams provide eight complete mechanism models. Trigger Words keeps the original three-column cheat sheet. Guide pages and relevant official documentation are linked beside the material.
 - **Archie:** A guide who docks in the menu and offers tips and facts based on the screen you are on. His 19-step tour explains each exam domain using this app's own code.
 
 Your progress is saved in your browser's local storage. Each person and each browser keeps separate progress, and clearing site data resets it. You can turn Archie's hints on or off from **Jump to** (Ctrl K or Cmd K).
+
+Study destinations have shareable hash links. For example: [Study plan](https://wglewis0721.github.io/CCAF-Tool/#learn/plan?week=1), [Domain 1 questions](https://wglewis0721.github.io/CCAF-Tool/#practice/questions?domain=1&count=10), and [Trigger Words](https://wglewis0721.github.io/CCAF-Tool/#learn/triggers). Returning from a linked activity restores the originating plan step. Opening a new question set during an unfinished session asks whether to resume or switch.
+
+**Pause motion** is separate from Archie's hint preferences. Reduced motion is respected, and timed mock exams stop decorative movement. Practice progress remains in the existing storage key; an active practice round is also retained in session storage for refreshes.
 
 ## Run it locally
 
@@ -45,6 +49,7 @@ You need **Python 3.9 or later** to build the page. **Node.js 18 or later** is o
 
    ```bash
    node scripts/validate.js
+   python scripts/check_bundle.py
    ```
 
 ## Deploy to GitHub Pages
@@ -69,14 +74,23 @@ src/design.css                Shared visual system and responsive styles
 src/assets/                   Optimized original Higgsfield artwork
 src/app.js                    Exam map, Archie, hints, the guided tour, and the home page
 src/guide.js                  Lessons, items, trigger words, and diagrams
+src/experience.js             Source-linked journeys, hash navigation, map views, and motion
+src/experience.css            Shared visual and responsive behavior for the approved upgrade
+src/art.html                  Reusable approved illustration symbols
+src/content/sources.js        Exact exam-guide pages and official documentation references
 src/content/q-s1.js ... q-s7.js   Questions, grouped by scenario
 src/content/q-fix*.js         Patches that rebalance answer-option lengths
 src/content/cards.js          Flashcards
 src/content/drills.js         Drill items and the study plan
 tests/test_ui.py              Optional end-to-end browser test
+tests/test_release.py         Five responsive browser profiles
+tests/test_experience.py      Study links, history, saved steps, map/written state, and references
+tests/test_motion.py          Animation, reduced motion, pause, keyboard, and accessible card faces
 ```
 
 The build inserts `src/app.js` at the `/*__APP__*/` marker and all content at the `/*__DATA__*/` marker in `src/template.html`. The output is one self-contained file. Artwork is embedded at build time, so the output remains portable. Fonts load from Google Fonts.
+
+The experience script, its CSS, and reusable artwork have their own build markers. CI checks both the content and the assembled JavaScript before deploying. Run the browser checks with `python tests/test_ui.py`, `python tests/test_release.py`, `python tests/test_experience.py`, and `python tests/test_motion.py`. Set `CCAF_TEST_URL` to the live Pages URL to test the release there.
 
 ## Adding or editing questions
 

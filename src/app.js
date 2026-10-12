@@ -71,16 +71,9 @@ const STC={own:'#4A92FF',cont:'#E2A440',foe:'#DB5A50',fog:'#7A8496'};
 const STN={own:'Mastered',cont:'In progress',foe:'Needs work',fog:'Not started yet'};
 const SCS={1:'Customer support',2:'Code generation',3:'Multi-agent research',4:'Developer productivity',5:'Claude Code in CI',6:'Data extraction'};
 function outposts(){const o=[];for(let d=1;d<=5;d++)TS.filter(t=>t.d===d).forEach((t,i)=>{const p=OUT_SLOTS[d][i];if(p)o.push({t,d,x:p[0],y:p[1],st:tsState(t.id)});});return o;}
-function keepIco(col){return `<g class="ico"><ellipse cx="0" cy="13" rx="16" ry="5" fill="#000" opacity=".45"/><ellipse cx="0" cy="12" rx="15" ry="5" fill="none" stroke="${col}" stroke-width="2" opacity=".7"/>
- <rect x="-10" y="-7" width="20" height="19" fill="url(#stone)" stroke="#0A0E15" stroke-width="1"/><path d="M-11-7h5v-5h4v5h4v-5h4v5h5v3h-22z" fill="url(#stone)" stroke="#0A0E15" stroke-width="1"/>
- <rect x="-3" y="3" width="6" height="9" rx="3" fill="#0A0E15"/><path d="M0-12v-13" stroke="#C9A55A" stroke-width="1.5"/><path d="M0-25l11 3.5-11 3.5z" fill="${col}" stroke="#0A0E15" stroke-width=".8"/></g>`;}
-function fortIco(hp){return `<g class="ico"><ellipse cx="0" cy="22" rx="30" ry="8" fill="#000" opacity=".5"/>
- <rect x="-24" y="-10" width="48" height="31" fill="url(#stoneD)" stroke="#05070B" stroke-width="1.2"/><rect x="-30" y="-22" width="14" height="43" fill="url(#stoneD)" stroke="#05070B" stroke-width="1.2"/><rect x="16" y="-22" width="14" height="43" fill="url(#stoneD)" stroke="#05070B" stroke-width="1.2"/>
- <path d="M-31-22l7-10 7 10zM15-22l7-10 7 10z" fill="#7A2420" stroke="#05070B" stroke-width="1"/><rect x="-6" y="5" width="12" height="16" rx="6" fill="#120A0A"/><circle cx="-23" cy="-10" r="2" fill="#FF9A3C"/><circle cx="23" cy="-10" r="2" fill="#FF9A3C"/>
- <rect x="-26" y="-44" width="52" height="7" rx="2" fill="#0A0E15" stroke="#05070B"/><rect x="-25" y="-43" width="${Math.max(0,50*hp/100)}" height="5" rx="1.5" fill="#D9473F"/></g>`;}
-function creepIco(){return `<g class="ico"><circle class="fire" cx="0" cy="4" r="16" fill="url(#fireG)"/><path d="M-3 8l3-9 3 9z" fill="#FFB347"/>
- <g fill="#5B2A4A" stroke="#14070F" stroke-width="1"><path d="M-20 10l6-16 6 16z"/><path d="M10 10l6-16 6 16z"/><path d="M-6 -6l6-16 6 16z"/></g>
- <g fill="#FF5A4A"><circle cx="-15.5" cy="0" r="1.2"/><circle cx="-12.5" cy="0" r="1.2"/><circle cx="14.5" cy="0" r="1.2"/><circle cx="17.5" cy="0" r="1.2"/><circle cx="-1.5" cy="-16" r="1.2"/><circle cx="1.5" cy="-16" r="1.2"/></g></g>`;}
+function keepIco(col){return mapOutpost(col);}
+function fortIco(hp){return mapFort(hp);}
+function creepIco(){return mapCreep();}
 function campMap(){
   const outs=outposts();const seenPts=outs.filter(o=>o.st!=='fog');
   let regs='',labs='';
@@ -91,7 +84,7 @@ function campMap(){
   const defs=`<defs>${regs}<filter id="relief" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".007" numOctaves="4" seed="9" result="n"/><feDiffuseLighting in="n" surfaceScale="4" lighting-color="#C7D6E6" result="l"><feDistantLight azimuth="235" elevation="40"/></feDiffuseLighting><feComposite in="l" in2="SourceGraphic" operator="arithmetic" k1="1" k2="0" k3="0" k4="0"/></filter>
    <filter id="fb" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
    <mask id="fogm"><rect width="1000" height="560" fill="#fff"/><g filter="url(#fb)">${seenPts.map(o=>`<circle cx="${o.x}" cy="${o.y}" r="78" fill="#000"/>`).join('')}${[1,2,3,4,5,6].filter(s=>bossStats(s).seen).map(s=>`<circle cx="${BOSS_AT[s][0]}" cy="${BOSS_AT[s][1]}" r="70" fill="#000"/>`).join('')}</g></mask></defs>`;
-  const ground=`<rect width="1000" height="560" fill="#3F5446" filter="url(#relief)"/>${[1,2,3,4,5].map(d=>`<polygon class="reg" points="${REGIONS[d]}" fill="url(#rg${d})"/>`).join('')}`;
+  const ground=`<rect width="1000" height="560" fill="#25352C"/><image href="__ASSET_terrain-material__" width="1000" height="560" preserveAspectRatio="xMidYMid slice" opacity=".6"/>${[1,2,3,4,5].map(d=>`<polygon class="reg" points="${REGIONS[d]}" fill="url(#rg${d})"/>`).join('')}`;
   const sel=(k,rx,ry,cy)=>csel===k?`<ellipse class="selc" cx="0" cy="${cy}" rx="${rx}" ry="${ry}"/>`:'';
   const outsH=outs.map(o=>`<g class="hit" transform="translate(${o.x} ${o.y})" data-act="csel" data-k="ts:${o.t.id}" role="button" tabindex="0" aria-label="Task ${o.t.id}, ${STN[o.st]}">${sel('ts:'+o.t.id,22,8,12)}${keepIco(STC[o.st])}<text class="lbl" y="31">${o.t.id}</text><title>${esc(o.t.id+' '+o.t.t)}</title></g>`).join('');
   const bossH=[1,2,3,4,5,6].map(s=>{const [x,y]=BOSS_AT[s];const st=bossStats(s);return `<g class="hit" transform="translate(${x} ${y})" data-act="csel" data-k="boss:${s}" role="button" tabindex="0" aria-label="Exam scenario ${s}: ${esc(SC[s].n)}">${sel('boss:'+s,36,11,22)}${fortIco(st.hp)}<text class="blbl" y="42">S${s}: ${SCS[s]}</text></g>`;}).join('');
@@ -104,7 +97,7 @@ function campMap(){
       units+=`<g pointer-events="none"><ellipse rx="7" ry="3" cy="7" fill="#000" opacity=".4"/><circle r="6" fill="url(#uP1)" stroke="#0A0E15"/><circle r="2" fill="#fff" opacity=".8"/><animateMotion dur="${16+k*3}s" begin="-${k*4}s" repeatCount="indefinite" path="${path}"/></g>`;}}
   const hp=route.length?route[0]:[505,330];
   const hero=`<g pointer-events="none" transform="translate(${hp[0]+18} ${hp[1]-14})"><g class="bob"><ellipse rx="9" ry="3.5" cy="10" fill="#000" opacity=".45"/><circle r="8" fill="url(#uHero)" stroke="#3A2A08"/><path d="M-4 -1l2-3 2 2 2-2 2 3" fill="none" stroke="#5B3F0E" stroke-width="1.3"/></g></g>`;
-  return `<svg class="cmap" viewBox="0 0 1000 560" role="group" aria-label="Exam map. Five domain regions with 30 task markers, six exam scenarios, and five common wrong answers.">${defs}${ground}${labs}${creepH}${outsH}${bossH}${units}${hero}${fog}</svg>`;
+  return `<svg class="cmap" viewBox="0 0 1000 560" role="group" aria-label="Exam map. Five domain regions with 30 task markers, six exam scenarios, and five common wrong answers.">${defs}${ground}${fog}${labs}${creepH}${outsH}${bossH}${units}${hero}</svg>`;
 }
 function miniMap(){
   const outs=outposts();
@@ -133,18 +126,18 @@ function selPanel(){
   const clear={k:'X',l:'Clear selection',i:'cancel',act:'csel',data:{k:''}};
   if(kind==='ts'){
     const t=TS.find(x=>x.id===id),s=tsStats(id),st=tsState(id),acc=s.seen?Math.round(100*s.right/s.seen):0;
-    head=`<div class="selhead"><div class="portrait"><svg viewBox="-20 -30 40 50">${keepIco(STC[st])}</svg></div><div><h3>Task ${t.id}</h3><span class="st" style="color:${STC[st]}">${STN[st]}</span></div></div>`;
+    head=`<div class="selhead"><div class="portrait"><svg viewBox="-27 -34 54 58">${keepIco(STC[st])}</svg></div><div><h3>Task ${t.id}</h3><span class="st" style="color:${STC[st]}">${STN[st]}</span></div></div>`;
     body=`<p>${esc(t.t)}.</p><div class="hbar ${acc<50?'foe':acc<80?'mid':''}"><i style="width:${acc}%"></i></div><span class="small muted">${s.seen?`You have answered ${s.seen} of its ${s.total} questions, and ${acc}% of your latest answers are correct.`:`You have not answered any of its ${s.total} questions yet.`} This task belongs to Domain ${t.d}, ${esc(DOM[t.d].n)}, and it counts as mastered at 80%.</span>`;
     cmds=[{k:'A',l:'Practice this task',i:'atk',act:'tsdrill',data:{v:t.id},tip:'Practice the questions for this task'},{k:'R',l:'Practice the domain',i:'rally',act:'quick',data:{d:t.d},tip:'Ten questions from Domain '+t.d},{k:'S',l:'Read the lesson',i:'scout',act:'cguide',data:{v:t.d},tip:'Open the Domain '+t.d+' lesson'},{k:'T',l:'Flashcards',i:'train',act:'cdeck',data:{v:t.d},tip:'Flashcards for Domain '+t.d},null,null,null,null,clear];
   }else if(kind==='boss'){
     const s=+id,b=BOSSES[s],S=SC[s],st=bossStats(s);
-    head=`<div class="selhead"><div class="portrait"><svg viewBox="-36 -48 72 76">${fortIco(st.hp)}</svg></div><div><h3>Scenario ${s}: ${esc(S.n)}</h3><span class="st" style="color:#F3A29C">Exam scenario</span></div></div>`;
+    head=`<div class="selhead"><div class="portrait"><svg viewBox="-43 -50 86 88">${fortIco(st.hp)}</svg></div><div><h3>Scenario ${s}: ${esc(S.n)}</h3><span class="st" style="color:#F3A29C">Exam scenario</span></div></div>`;
     body=`<p class="small muted">${esc(S.b)}</p><div class="hbar foe"><i style="width:${st.hp}%"></i></div><span class="small muted">You have answered ${st.right} of its ${st.total} questions correctly. The red bar over the castle shrinks as that number grows.</span>
      <span class="small">These decision rules help most in this scenario:</span><div class="chips">${b.weak.map(r=>`<span>Rule ${r}: ${esc(RULES[r].n)}</span>`).join('')}</div><p class="small">${esc(b.plan)}</p>`;
     cmds=[{k:'A',l:'Practice this scenario',i:'siege',act:'scdrill',data:{v:s},tip:'Ten questions from this scenario'},{k:'S',l:'Read the notes',i:'scout',act:'clib',data:{v:'scenarios'},tip:'Scenario notes'},null,null,null,null,null,null,clear];
   }else if(kind==='creep'){
     const i=+id,b=BEASTS[i];
-    head=`<div class="selhead"><div class="portrait"><svg viewBox="-26 -28 52 44">${creepIco()}</svg></div><div><h3>${esc(b.name)}</h3><span class="st" style="color:#E59AD0">Common wrong answer</span></div></div>`;
+    head=`<div class="selhead"><div class="portrait"><svg viewBox="-30 -35 60 65">${creepIco()}</svg></div><div><h3>${esc(b.name)}</h3><span class="st" style="color:#E59AD0">Common wrong answer</span></div></div>`;
     body=`<p class="small muted">You will usually meet it here: ${esc(b.habitat)}</p><span class="small">Watch for wording like this:</span><div class="chips">${b.tells.map(t=>`<span>${esc(t)}</span>`).join('')}</div><p class="small"><b>How to beat it.</b> ${esc(b.counter)}</p>`;
     cmds=[{k:'A',l:'Practice spotting it',i:'atk',act:'opendrill',data:{v:'shape'},tip:'The Name the shape drill'},{k:'S',l:'Read rule '+b.rule,i:'scout',act:'clib',data:{v:'playbook'},tip:'The decision rules'},null,null,null,null,null,null,clear];
   }else{
@@ -167,8 +160,8 @@ function questLog(){
 }
 function vMap(){
   const sp=selPanel();const sk=streakHtml();const seenAll=Q.filter(q=>store.answers[q.id]).length;
-  return `<div class="pagehead"><h1>Campaign Mode</h1><p>Five domains. Thirty tasks. Select a marker to see your progress and practice. Blue means mastered.</p></div>
-  <section class="mapwrap"><div class="mapscroll">${campMap()}</div><div class="maplegend"><span><i style="background:${STC.own}"></i>Mastered</span><span><i style="background:${STC.cont}"></i>In progress</span><span><i style="background:${STC.foe}"></i>Needs work</span><span><i style="background:${STC.fog}"></i>Not started</span><span><i style="background:#7A2420"></i>Exam scenario</span><span><i style="background:#FF9A3C"></i>Common wrong answer</span></div></section>
+  return `<div class="pagehead"><h1>Campaign Mode</h1><p>Five domains. Thirty tasks. Two views of the same progress.</p></div><div class="map-view-switch"><div class="seg" role="group" aria-label="Campaign representation"><button data-act="mapview" data-v="map" aria-pressed="${studyUI.mapView!=='written'}">Campaign map</button><button data-act="mapview" data-v="written" aria-pressed="${studyUI.mapView==='written'}">Exam domains</button></div></div>
+  <section class="mapwrap"><div class="mapscroll">${studyUI.mapView==='written'?writtenCampaign():campMap()}</div><div class="maplegend"><span><i style="background:${STC.own}"></i>Mastered</span><span><i style="background:${STC.cont}"></i>In progress</span><span><i style="background:${STC.foe}"></i>Needs work</span><span><i style="background:${STC.fog}"></i>Not started</span><span><i style="background:#7A2420"></i>Exam scenario</span><span><i style="background:#FF9A3C"></i>Common wrong answer</span></div></section>
   <section class="console"><div class="cpanel minimap">${miniMap()}<div class="mm-t">Overview</div></div><div class="cpanel selinfo">${sp.head}${sp.body}</div><div class="cpanel cmdcard" role="group" aria-label="Actions">${sp.cmds.map(cmdBtn).join('')}</div></section>
   <div class="cols two"><section class="panel quests"><h3>Goals</h3>${questLog()}</section>
    <section class="panel stack"><h3>Exam date and streak</h3><div class="fieldlbl">Exam date</div><input type="date" id="examDate" value="${esc(store.examDate)}" aria-label="Exam date">${sk.html}<p class="small muted">You studied on ${sk.n} ${sk.n===1?'day':'days'} in the last 18 weeks, and you have seen ${seenAll} of the ${Q.length} questions. Your progress is saved in this browser only.</p></section></div>`;
@@ -202,13 +195,13 @@ function vHome(){
   const get=[[Q.length,'scenario questions','With answer-by-answer reasoning'],['60','question mock exam','Timed, with a domain report'],[CARDS.length,'flashcards','Spaced repetition built in'],['3','quick drills','Train pattern recognition'],['5','domain lessons','Rules, diagrams, and traps'],[COACH.length,'tour stops','Real concepts in real code']];
   const loop=[['Learn','See a mechanism. Understand the rule.','learn'],['Practice','Make a decision. Read the reasoning.','practice'],['Lock it in','Review the facts. Spot the pattern.','cards'],['Prove it','Take a mock. Find your next focus.','mock']];
   const bridge=[[1,'Claude Agent SDK','Loops, coordinators, and code gates.'],[2,'MCP tools','Clear descriptions and scoped tools.'],[3,'Claude Code','Team configuration and workflows.'],[4,'Claude API','Structured output and batch decisions.'],[5,'Long sessions','Context, sources, and reliability.']];
-  const sample=gS(126,'A tool request passes through a code gate. Allowed actions run; blocked actions stop.',gB(10,10,120,44,['Request'])+gP('M130 32 H160')+gB(160,10,120,44,['Code gate'],'rule-gate')+gP('M280 32 H310')+gB(310,10,120,44,['Run'])+gP('M220 54 V84')+gB(160,86,120,36,['Stop']));
-  return `<section class="hero2"><div class="hero-bg" aria-hidden="true"><img src="__ASSET_tactical-atlas__" alt="" width="1440" height="814" fetchpriority="high"></div>
+
+  return `<section class="hero2">
    <div class="hero-in"><div class="hero-copy"><span class="kicker">Claude Certified Architect, Foundations</span>
     <h1>Build <span class="keep-word">exam-ready</span> judgment.</h1>
     <p class="lede">See the patterns. Understand the reasoning. Practice Claude's design decisions and watch your progress grow.</p>
     <div class="row hero-actions">${cta}</div></div>
-    <div class="hero-guide"><div class="hero-scout">${spr(fresh?'cheer':'idle')}<div class="bubble"><b>Archie</b><span id="archtip">${greet}</span></div></div><div class="first-pattern"><h2>Must always happen? Use a code gate.</h2>${sample}<details class="pattern-reason"><summary>See why this wins</summary><p>${esc(RULES[1].fix)}</p><p class="muted">Stronger wording still leaves enforcement to the model.</p></details></div></div></div>
+    <div class="hero-guide"><div class="hero-scout">${spr(fresh?'cheer':'idle')}<div class="bubble"><b>Archie</b><span id="archtip">${greet}</span></div></div></div></div>
    <div class="facts"><div><b>60</b><span>questions in 120 minutes</span></div><div><b>720</b><span>out of 1,000 to pass</span></div><div><b>4 of 6</b><span>scenarios appear on your exam</span></div><div><b>${fresh?'5':o+'%'}</b><span>${fresh?'domains and 30 task statements':'your current readiness'}</span></div></div></section>
   <section class="landsec"><div class="sechead"><h2>Choose how you want to study</h2><p>One goal, six ways in. Number keys 1 to 6 jump straight to a mode.</p></div><div class="modes">${modes}</div></section>
   <section class="landsec"><div class="sechead"><h2>What you will get</h2><p>Built from the exam guide and Anthropic's documentation.</p></div>
@@ -413,9 +406,10 @@ function afterRender(){
   syncFairy();
   applyMotionPreferences();
   if(view!==lastView){const first=lastView===null;lastView=view;hideHint();if(isMobile())peekMnav(first?4000:3000);queueHint(first?2600:1600);}
+  experienceAfterRender();
 }
 function applyMotionPreferences(){
-  document.querySelectorAll('svg').forEach(svg=>{if(typeof svg.pauseAnimations==='function'){if(reduceMo())svg.pauseAnimations();else svg.unpauseAnimations();}});
+  document.querySelectorAll('svg').forEach(svg=>{if(typeof svg.pauseAnimations==='function'){if(reduceMo()||studyUI.motion===false||document.hidden)svg.pauseAnimations();else svg.unpauseAnimations();}});
 }
 window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',applyMotionPreferences);
 function coachOpen(i){coach.open=true;coach.turns=0;if(typeof i==='number')coach.i=i;hideHint();syncFairy();coachStep();}
@@ -455,6 +449,7 @@ function coachFocus(scroll){
 window.addEventListener('scroll',()=>{if(coach.open)coachFocus(false);},{passive:true});
 window.addEventListener('resize',()=>{if(coach.open)coachFocus(false);});
 function extAct(a,d){
+  if(experienceAct(a,d))return true;
   if(a==='mnavtog'){if(mnavOpen){clearTimeout(mnavT);setMnav(false);}else peekMnav(6000);return true;}
   if(a==='ptab'&&(d.v==='cards'||d.v==='mock')){go(d.v);return true;}
   if(a==='ptab'&&view!=='practice'){sub.practice=d.v;dr=null;go('practice');return true;}

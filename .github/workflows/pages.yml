@@ -37,6 +37,9 @@ jobs:
       - name: Build the site
         run: python scripts/build.py _site/index.html
 
+      - name: Check the assembled application
+        run: python scripts/check_bundle.py _site/index.html
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 

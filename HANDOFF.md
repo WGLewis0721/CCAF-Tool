@@ -65,8 +65,11 @@ Optional browser tests (screenshots go to `tests/screenshots/`):
 ```bash
 pip install playwright && python -m playwright install chromium webkit
 python scripts/build.py
+python scripts/check_bundle.py # syntax-check the assembled page; requires Node
 python tests/test_ui.py        # functional regression, about 4 to 5 minutes, desktop 1180px and phone 400px
 python tests/test_release.py   # responsive checks: desktop 1440, iPhone 390 (WebKit), Samsung 412, small phone 320, tablet 768 (WebKit)
+python tests/test_experience.py # linked study journey, sources, history, session restoration, map/written selection
+python tests/test_motion.py    # actual animations, pause/reduced motion, keyboard and skip link
 CCAF_TEST_URL=https://wglewis0721.github.io/CCAF-Tool/ python tests/test_release.py   # run the release checks against the live site
 ```
 
@@ -84,8 +87,12 @@ VISUAL-PLAN.md                Plan for the generated artwork
 scripts/build.py              Assembles src/ into one HTML file (default dist/index.html, or a path argument)
 scripts/validate.js           Question and card checks; fails CI on problems
 src/template.html             Full HTML document: head, base CSS layers, core app logic (state, views, actions), markers
-src/design.css                Final CSS layer from the visual elevation pass (injected last)
-src/assets/*.webp             Generated artwork (hero atlas and six mode illustrations), embedded at build time
+src/design.css                Base visual elevation CSS layer
+src/experience.css            Approved journey, artwork, diagrams and motion presentation
+src/experience.js             Deep links, sources, study journey, exercises, written map and motion
+src/art.html                  Shared campaign and learning artwork definitions
+src/assets/*.webp             Campaign sprites, learning symbols, terrain and six mode illustrations
+src/content/sources.js        Exact exam-guide pages and official documentation references
 src/app.js                    Archie, hints, mobile menu, exam map, home landing page, guided tour
 src/guide.js                  Learn section: lessons (GLEVELS), items, trigger words, diagrams, bosses/beasts data
 src/content/q-s1.js ... q-s7.js   Questions grouped by scenario (q-s7 holds the "g-" gap-fill set)
@@ -103,11 +110,11 @@ HANDOFF.md                    This file
 `scripts/build.py` reads `src/template.html` and fills it in this order:
 
 1. `/*__APP__*/` (inside the main script) is replaced with the contents of `src/app.js`.
-2. `/*__DATA__*/` (inside the main script) is replaced with, in order: `const Q=[];`, every question file (q-s1 to q-s7, then q-fix, q-fix2, q-fix3), `const CARDS=[];` plus `cards.js`, `drills.js`, then `guide.js`.
+2. `/*__DATA__*/` (inside the main script) receives question files and patches, cards, drills, the source registry, and the guide. Patch ordering remains significant.
 3. `/*__DESIGN__*/` (at the end of the `<style>` block) is replaced with `src/design.css`.
-4. Every `__ASSET_name__` token is replaced with a base64 `data:image/webp` URI of `src/assets/name.webp`. A missing file fails the build. Today the tokens are `tactical-atlas` (home hero) and `mode-map`, `mode-practice`, `mode-cards`, `mode-mock`, `mode-learn`, `mode-tour` (the six mode cards), all used in `app.js`.
+4. Experience script, CSS and shared artwork markers receive their corresponding source files. Every `__ASSET_name__` token receives a base64 WebP URI. Missing artwork fails the build. The rejected tactical atlas is retained only as a retired asset; it is not embedded or displayed.
 
-The output is one self-contained file of roughly 566,000 characters, most of it embedded artwork.
+The output is one self-contained file of roughly 825,000 characters. CI runs `scripts/check_bundle.py` on that assembled file before deployment.
 
 The q-fix files must stay after the q-s files because they patch questions by id. `guide.js` pushes extra cards into `CARDS` (3 added cards plus one `d:6` "Triggers" card per trigger-word row), which is why the app shows 128 cards. The validator also loads `guide.js`, so it reports 128 as well.
 
@@ -143,7 +150,7 @@ The q-fix files must stay after the q-s files because they patch questions by id
 
 - `NAV = [home, map, practice, learn]`, labeled Home, **Campaign Mode**, Practice, Learn. The top bar (desktop) and the mobile pill render from it.
 - `NAVG` maps internal views to their nav group: `guide` and `library` belong to `learn`; `cards` and `mock` belong to `practice`.
-- `go('learn')` opens `store.lastLearn` (guide or library).
+- Top-level Learn opens Study plan. Home's Lessons action opens Lessons specifically. Exact hash links select their destination; browser Back/Forward and return-to-plan links preserve the study context.
 - The **Learn** tab row merges Guidebook and Library tabs (`learnHead()`); the **Practice** tab row includes Flashcards and Mock exam (`practiceHead()`). Cross-view tab clicks are routed in `extAct()`.
 
 ### Actions
@@ -174,13 +181,13 @@ Key ones: `quick` (10 questions, `data-d` domain or 0 for mixed), `tsdrill` (one
 
 | Feature | Code |
 | --- | --- |
-| Home landing page and mode select (hero over the generated atlas art with a small "code gate" diagram, exam facts, 6 illustrated modes, what you get, what to expect, domain-to-product mapping, closing call to action) | `vHome()`, `MODES`, `MODE_ART` in `app.js` |
+| Home landing page and mode select (original layout and actions, concise exam facts, six illustrated modes; rejected hero atlas and code-gate card removed) | `vHome()`, `MODES`, `MODE_ART` in `app.js` |
 | Campaign Mode, the exam map (5 domain regions, 30 task markers, 6 scenario castles, 5 wrong-answer camps, fog, minimap, actions panel, goals) | `vMap()`, `campMap()`, `miniMap()`, `selPanel()`, `questLog()` in `app.js` |
 | Practice questions, setup, results | `vPractice`, `vSetup`, `vSession`, `vSessionDone` in `template.html` |
 | Drills (Spot the tell, Name the shape, Pick the axis) | `startDrill`, `vDrill` in `template.html`; data in `drills.js` |
 | Mock exam (60 items, timer, flags, question map, score report) | `vMockIntro`, `vMockRun`, `vMockResult`, `mockStart`, `finishMock` in `template.html` |
 | Flashcards (spaced repetition: 1, 3, 7, 14 days) | `vCards` in `template.html` |
-| Learn: lessons (each with a working-flow diagram and a "Spot the trap" disclosure from `lessonVisual(d)`), items, trigger words, diagrams | `vGuide`, `vWalk`, `lessonVisual`, `vItems`, `vTrig`, `vMaps`, `DIAGS` in `guide.js` |
+| Learn: Study plan first, then lessons with worked decisions, eight reference diagrams, exercises and reference tools; Trigger Words keeps its original three-column format | `guide.js` and `experience.js`; original `GLEVELS`, `ITEMS`, `TRIG`, `DIAGS` remain the content base |
 | Learn: decision rules, scenarios, study plan, syllabus | `vLibrary`, `vPlaybook`, `vScenarios`, `vPlan`, `vSyllabus` in `template.html` |
 | Progress bar on every page | `hudHtml()` in `app.js` |
 | Archie sprite (poses idle, cheer, dazed, point, fight) | `spr(pose)`, `archie(pose, text)`, `ARCH_DEFS` in `app.js` |

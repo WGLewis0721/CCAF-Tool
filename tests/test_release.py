@@ -47,18 +47,17 @@ def run(playwright, profile):
     page.evaluate('scrollTo(0,0)')
     page.screenshot(path=str(OUT / f'release-{name}-home.png'), full_page=True)
     assert page.locator('.hero-actions [data-act="coach"]').is_visible()
-    before = page.evaluate('JSON.stringify(window.__ccarf.store())')
-    page.locator('.pattern-reason summary').click()
-    assert page.locator('.pattern-reason').get_attribute('open') is not None
-    assert page.evaluate('JSON.stringify(window.__ccarf.store())') == before
-    page.locator('.pattern-reason summary').click()
+    assert page.locator('.hero-bg,.first-pattern').count() == 0
     page.locator('.hero-actions [data-act="quick"]').click()
     page.wait_for_selector('.qtext')
     selected = page.locator('.opts .opt').first
     selected.click()
     check = page.locator('[data-act="check"]')
     if check.count():
-        page.locator('.opts .opt').nth(1).click()
+        index=1
+        while not page.locator('[data-act="check"]').is_enabled():
+            page.locator('.opts .opt').nth(index).click()
+            index+=1
         check.click()
     page.wait_for_selector('.explain')
     assert page.evaluate('Object.keys(window.__ccarf.store().answers).length') == 1
@@ -79,18 +78,22 @@ def run(playwright, profile):
     assert page.locator('.cmap').evaluate('(svg) => svg.animationsPaused()')
     page.screenshot(path=str(OUT / f'release-{name}-campaign.png'), full_page=True)
     page.evaluate('window.__ccarf.go("learn")')
+    assert page.locator('.subtabs button').first.inner_text() == 'Study plan'
+    page.locator('[data-act="gtab"][data-v="walk"]').click()
     for level in range(1, 6):
         page.locator(f'[data-act="glevel"][data-v="{level}"]').first.click()
-        assert page.locator('.lesson-visual svg').count() == 1
+        assert page.locator('.lesson-walkthrough .study-art').count() == 1
+        assert page.locator('.lesson-visual,.model-flow').count() == 0
         assert page.locator('.chap .archie .bubble').text_content().startswith(f'ArchieThis lesson covers Domain {level},')
-        page.locator('.lesson-reason summary').click()
-        assert page.locator('.lesson-reason').get_attribute('open') is not None
+        page.locator('[data-act="lessonbeat"][data-v="2"]').click()
+        assert page.locator('[data-act="lessonbeat"][data-v="2"]').get_attribute('aria-pressed') == 'true'
         no_overflow(page, name + f' lesson {level}')
     page.locator('input[data-gdone="5"]').check()
     assert page.evaluate('window.__ccarf.store().guide.done[5]') == 1
     page.screenshot(path=str(OUT / f'release-{name}-lesson.png'), full_page=True)
     page.locator('[data-act="gtab"][data-v="maps"]').click()
-    assert page.locator('.dgsvg').count() == 6
+    assert page.locator('.model-picker a').count() == 8
+    assert page.locator('.model-flow').count() == 1
     no_overflow(page, name + ' diagrams')
     page.keyboard.press('Control+k')
     page.locator('#pal input').fill('1.4')

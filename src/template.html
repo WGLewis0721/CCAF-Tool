@@ -704,9 +704,11 @@ td{border-bottom:1px solid var(--line)}
 @media (min-width:861px){#mbub{display:none!important}}
 @media (prefers-reduced-motion:reduce){#fairy,#fairy .spr,.mnav-links,.mnav-tog svg{transition:none}}
 /*__DESIGN__*/
+/*__EXPERIENCE_CSS__*/
 </style>
 </head>
 <body>
+<!--__ART__-->
 <div id="app"></div>
 <script>
 (function(){
@@ -842,14 +844,14 @@ function dueCount(){const now=Date.now();return CARDS.filter(c=>{const s=store.c
 
 /* ---------- state ---------- */
 let view=store.view||'home';
-let sub={practice:'q',library:'playbook',guide:'walk',glevel:1,icat:'All',tcat:'All'};
+let sub={practice:'q',library:'plan',guide:'walk',glevel:1,icat:'All',tcat:'All'};
 let cfg={d:0,sc:0,ts:'',mode:'smart',n:10};
 let sess=null,mock=null,dr=null;
 let cardCfg={d:-1},cardQ=null,flipped=false;
 let timerH=null,intro=true,resetAsk=false,counted=false,enterNext=true;
 const app=$('#app');
 
-function go(v){if(v==='learn')v=store.lastLearn||'guide';if(v==='guide'||v==='library')store.lastLearn=v;view=v;store.view=v;save();enterNext=true;render();window.scrollTo(0,0);}
+function go(v){if(v==='learn'){sub.library='plan';v='library';}if(v==='guide'||v==='library')store.lastLearn=v;view=v;store.view=v;save();enterNext=true;render();window.scrollTo(0,0);}
 function markHtml(){return `<div class="mark" aria-hidden="true">${ORDER.map(d=>`<i style="flex:${DOM[d].w};--c:var(--d${d})"></i>`).join('')}</div>`;}
 function navBtn(n){return `<button data-go="${n[0]}" ${(NAVG[view]||view)===n[0]?'aria-current="true"':''}><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICON[n[0]]}</svg><span>${n[1]}</span></button>`;}
 function shell(inner){
@@ -869,9 +871,9 @@ function render(){
   else if(view==='practice')h=vPractice();
   else if(view==='mock')h=mock?(mock.done?vMockResult():vMockRun()):vMockIntro();
   else if(view==='cards')h=vCards();
-  else if(view==='library')h=vLibrary();
+  else if(view==='library')h=sub.library==='exercise'?vExercise():vLibrary();
   else if(view==='guide')h=vGuide();
-  app.innerHTML=shell(h);
+  app.innerHTML=shell(experienceInner(h));
   intro=false;
   const mn=document.querySelector('.main');
   if(mn&&enterNext){mn.classList.add('enter');enterNext=false;}
@@ -972,9 +974,11 @@ function practiceHead(cur){
   return `<div class="pagehead"><h1>Practice</h1><p>Scenario decisions, explained. Answer choices shuffle, so follow the reasoning.</p></div>
    <div class="subtabs" role="tablist">${tabs.map(t=>`<button role="tab" aria-selected="${cur===t[0]}" data-act="ptab" data-v="${t[0]}" ${cur===t[0]?'aria-current="true"':''}>${t[1]}</button>`).join('')}</div>`;}
 function learnHead(cur){
-  const tabs=[['gtab','walk','Lessons'],['ltab','playbook','Decision rules'],['ltab','scenarios','Scenarios'],['gtab','trig','Trigger words'],['gtab','items','Key terms'],['gtab','maps','Diagrams'],['ltab','plan','Study plan'],['ltab','syllabus','Syllabus']];
-  return `<div class="pagehead"><h1>Learn</h1><p>See the mechanisms. Learn the rules. Explore the diagrams and common traps.</p></div>
-   <div class="subtabs" role="tablist">${tabs.map(t=>`<button role="tab" aria-selected="${cur===t[0]+':'+t[1]}" data-act="${t[0]}" data-v="${t[1]}" ${cur===t[0]+':'+t[1]?'aria-current="true"':''}>${t[2]}</button>`).join('')}</div>`;}
+  const tabs=[['ltab','plan','Study plan'],['gtab','walk','Lessons'],['gtab','maps','Diagrams'],['ltab','playbook','Decision rules'],['ltab','scenarios','Scenarios'],['gtab','trig','Trigger words'],['gtab','items','Key terms'],['ltab','syllabus','Syllabus']];
+  const intro=cur==='gtab:walk'?'Guided decisions, key moves, and practice for each domain.':cur==='gtab:maps'?'Complete mechanism models, branches, and comparisons.':cur==='ltab:plan'?'Your beginning: a clear route from reading to practice and hands-on work.':'Study tools and source references, organized around the exam.';
+  return `<div class="pagehead"><h1>Learn</h1><p>${intro}</p></div>${cur==='ltab:plan'?learnOverview(cur):''}<nav class="subtabs" aria-label="Learn tools">${tabs.map(tab=>`<button data-act="${tab[0]}" data-v="${tab[1]}" ${cur===tab[0]+':'+tab[1]?'aria-current="true"':''}>${tab[2]}</button>`).join('')}</nav>`;
+}
+
 function vPractice(){
   const head=practiceHead(sub.practice);
   if(sub.practice==='q')return head+(sess?vSession():vSetup());
@@ -1018,7 +1022,7 @@ function tags(q){
 }
 function scnPanel(q,open){
   const s=SC[q.sc];
-  return `<aside class="scn" style="--c:var(--d${s.doms[0]})"><details ${open?'open':''}><summary>Scenario ${s.id}: ${esc(s.n)}</summary><p>${esc(s.b)}</p></details></aside>`;
+  return `<aside class="scn" style="--c:var(--d${s.doms[0]})">${studyArt('keep')}<details ${open?'open':''}><summary>Scenario ${s.id}: ${esc(s.n)}</summary><p>${esc(s.b)}</p></details></aside>`;
 }
 const wide=()=>window.matchMedia('(min-width:1000px)').matches;
 function optsHtml(q,it,reveal){
@@ -1037,7 +1041,7 @@ function vSession(){
    <div class="qtext">${fmt(q.q)}</div>
    ${optsHtml(q,it,it.done)}
    ${!it.done&&multi?`<div class="row"><button class="btn primary" data-act="check" ${it.sel.length===q.a.length?'':'disabled'}>Check answer</button><span class="small muted">Pick ${q.a.length}, then check.</span></div>`:''}
-   ${it.done?`<div class="explain ${it.ok?'ok':'no'}"><div class="vdrow">${spr(it.ok?'cheer':'dazed')}<div class="vd">${it.ok?'Correct':'Not this one'}</div></div><p>${fmt(q.e)}</p>${q.r?`<div class="rulebox"><b>Rule ${q.r}, ${esc(RULES[q.r].n)}.</b> ${esc(RULES[q.r].fix)}</div>`:''}</div>
+   ${it.done?`<div class="explain ${it.ok?'ok':'no'}"><div class="vdrow">${spr(it.ok?'cheer':'dazed')}<div class="vd">${it.ok?'Correct':'Not this one'}</div></div><p>${fmt(q.e)}</p>${sourceLine([q.ts])}${q.r?`<div class="rulebox"><b>Rule ${q.r}, ${esc(RULES[q.r].n)}.</b> ${esc(RULES[q.r].fix)}</div>`:''}</div>
    <div class="row"><button class="btn primary" data-act="next">${sess.i+1<sess.items.length?'Next question':'See results'}</button><span class="small muted"><span class="kbd">Enter</span> next, <span class="kbd">F</span> flag</span></div>`:''}
    </section></div>`;
 }
@@ -1051,13 +1055,13 @@ function vSessionDone(){
 }
 
 /* ---------- Drills ---------- */
-function startDrill(kind){
+function startDrill(kind,paint=true){
   const src=kind==='tell'?TELLS:kind==='axis'?AXIS:SHAPEQ;
   dr={kind,items:shuffle(src).slice(0,10).map(x=>{
     if(kind==='tell'){const others=shuffle([1,2,3,4,5,6,7,8,9,10].filter(r=>r!==x.r)).slice(0,3);return {x,opts:shuffle([x.r].concat(others)),sel:null};}
     if(kind==='axis')return {x,opts:shuffle([0,1]),sel:null};
     return {x,opts:[0,1,2,3,4],sel:null};}),i:0,ok:0};
-  render();
+  if(paint)render();
 }
 function vDrill(kind){
   if(!dr||dr.kind!==kind){
@@ -1163,9 +1167,7 @@ function vMockResult(){
   const r=mock.res;const pass=r.scaled>=720;
   const wrong=mock.items.filter(i=>!i.ok);
   const todo=Object.entries(r.tsMiss).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  let start=0;
-  const trace=ORDER.map(d=>{const w=DOM[d].w,s=start;start+=w;const v=r.dom[d].n?pct(r.dom[d].c,r.dom[d].n):0;
-    return `<div class="trow" style="--c:var(--d${d})"><span class="nm"><b>D${d}</b><span>${DOM[d].s}</span></span><span class="trk"><span class="span" style="left:${s}%;width:${w}%"><span class="f" style="width:${v}%"></span></span></span><span class="pc">${r.dom[d].n?r.dom[d].c+'/'+r.dom[d].n:'none'}</span></div>`;}).join('');
+  const trace=scoreDomainTrace(r);
   return `<div class="pagehead"><h1>Score report</h1></div>
   <section class="panel hero stack" style="gap:18px"><div class="verdictbar" style="--c:var(--${pass?'good':'bad'})">${pass?'Above the 720 line on this mock':'Below the 720 line on this mock'}</div>${archie(pass?'cheer':'dazed',pass?'You passed this mock. Aim for 80% so you have a cushion on exam day.':'You are not there yet. Work through the list below, and then take another mock exam.')}
    <div class="score"><div><div class="big ${pass?'pass':'fail'}">${r.pct}%</div><div class="muted small">${r.ok} of ${r.n} correct in ${r.mins} minutes</div></div><div><div class="big">${r.scaled}</div><div class="muted small">rough scaled score</div></div></div>
@@ -1193,9 +1195,9 @@ function vCards(){
   const col=c&&c.d?`var(--d${c.d===6?3:c.d})`:'var(--ink)';
   return `${practiceHead('cards')}<p class="muted" style="max-width:62ch">These cards use spaced repetition. A card you get right comes back after 1, 3, 7, and then 14 days, and a card you miss comes back later in this session.</p>
   <div class="seg">${decks.map(d=>`<button data-act="deck" data-v="${d[0]}" aria-pressed="${cardCfg.d===d[0]}">${d[1]}</button>`).join('')}</div>
-  ${c?`<div class="flipwrap"><button class="flipper ${flipped?'back':''}" data-act="flip" style="--c:${col}" aria-label="Flashcard. Press to flip.">
-     <span class="face fr"><span class="small muted">${cardLbl(c)}</span><span class="q">${fmt(c.f)}</span><span class="hint">Tap or press Space to reveal</span></span>
-     <span class="face bk"><span class="small" style="opacity:.65">${cardLbl(c)}</span><span class="a">${fmt(c.b)}</span></span></button></div>
+  ${c?`<div class="flipwrap"><button class="flipper ${flipped?'back':''}" data-act="flip" style="--c:${col}" aria-label="${esc((flipped?'Answer: '+c.b:'Question: '+c.f).replace(/<[^>]*>/g,''))}. ${flipped?'Show question':'Reveal answer'}">
+     <span class="face fr" aria-hidden="${flipped}"><span class="small muted">${cardLbl(c)}</span><span class="q">${fmt(c.f)}</span><span class="hint">Tap or press Space to reveal</span></span>
+     <span class="face bk" aria-hidden="${!flipped}"><span class="small" style="opacity:.65">${cardLbl(c)}</span><span class="a">${fmt(c.b)}</span></span></button></div>
    <div class="row" style="justify-content:center;${flipped?'':'visibility:hidden'}"><button class="btn" data-act="cardno" style="min-width:140px">Again</button><button class="btn primary" data-act="cardyes" style="min-width:140px">Got it</button></div>
    <p class="small muted" style="text-align:center">${cardQ.length} due in this deck. After flipping: Left arrow is Again, Right arrow is Got it.</p>`
    :`<div class="panel empty">This deck is caught up. Cards return on schedule.</div>`}
@@ -1220,35 +1222,20 @@ function vLibrary(){
 function vPlaybook(){
   const cols=['var(--d1)','var(--d2)','var(--d3)','var(--d4)','var(--d5)'];
   return `<section class="panel"><h2>Ten decision rules</h2><p class="muted" style="margin:6px 0 10px;max-width:62ch">When two options both look plausible, find the rule in play. Most scenario questions are one of these ten wearing a different costume.</p>
-   ${RULES.slice(1).map((r,i)=>`<details class="rule" ${i===0?'open':''} style="--c:${cols[i%5]}"><summary><span class="rn">${i+1}</span><span class="rt">${esc(r.n)}<span class="rtell">${esc(r.tell)}</span></span></summary><div class="rbody"><div><b>What the right answer looks like</b>${esc(r.fix)}</div><div><b>Typical wrong answers</b>${esc(r.trap)}</div></div></details>`).join('')}</section>
-  <section class="panel stack"><h2>Five wrong-answer shapes</h2><div class="grid3">${SHAPES.map((s,i)=>`<div class="shape"><span class="small muted">Shape ${i+1}</span><b>${esc(s.n)}</b><span class="small">${esc(s.d)}</span></div>`).join('')}</div>
+   ${RULES.slice(1).map((r,i)=>`<details class="rule" ${i===0?'open':''} style="--c:${cols[i%5]}"><summary><span class="rn">${i+1}</span><span class="rt">${esc(r.n)}<span class="rtell">${esc(r.tell)}</span></span></summary><div class="rbody"><div><b>What the right answer looks like</b>${esc(r.fix)}</div><div><b>Typical wrong answers</b>${esc(r.trap)}</div>${sourceLine(RULE_TASKS[i+1])}</div></details>`).join('')}</section>
+  <section class="panel stack"><h2 id="study-shapes">Five wrong-answer shapes</h2><div class="grid3">${SHAPES.map((s,i)=>`<div class="shape">${studyArt(['messages','workshop','controller','validation','provenance'][i])}<span class="small muted">Shape ${i+1}</span><b>${esc(s.n)}</b><span class="small">${esc(s.d)}</span></div>`).join('')}</div>
    <div class="row"><button class="btn primary" data-act="opendrill" data-v="shape">Practice naming the shapes</button><button class="btn" data-act="opendrill" data-v="tell">Practice spotting the tell</button></div></section>`;
 }
-function vScenarios(){
-  return `<section class="panel"><h2>The six scenarios</h2><div style="margin-top:8px">${SC.slice(1).map(s=>`<details class="rule" style="--c:var(--d${s.doms[0]})"><summary><span class="rn">${s.id}</span><span class="rt">${esc(s.n)}<span class="rtell">Primary domains: ${s.doms.map(d=>'D'+d+' '+DOM[d].s).join(', ')}</span></span></summary><div class="rbody"><div><b>Setup</b>${esc(s.b)}</div><div><b>Watch for</b>${esc(s.traps)}</div><div><button class="btn" data-act="scdrill" data-v="${s.id}">Drill this scenario</button></div></div></details>`).join('')}</div></section>
-  <section class="panel"><h2>Exam-day tactics</h2><ol style="margin:12px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:9px">${TACTICS.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></section>
-  <section class="panel stack"><h2>The guide's four exercises</h2><div class="grid3">
-    <div class="shape"><b>1. Multi-tool agent</b><span class="small">Domains 1, 2, 5. Three or four MCP tools with a confusable pair, a loop on stop_reason, structured errors, an interception hook for a threshold rule, and a multi-concern test.</span></div>
-    <div class="shape"><b>2. Team Claude Code setup</b><span class="small">Domains 3, 2. Project CLAUDE.md, path-scoped rules, a forked skill with allowed-tools, .mcp.json with env expansion plus a personal server, plan versus direct on three tasks.</span></div>
-    <div class="shape"><b>3. Extraction pipeline</b><span class="small">Domains 4, 5. Schema with nullable fields and an other-plus-detail enum, a validation-retry loop, few-shot for varied formats, a 100-document batch, confidence routing.</span></div>
-    <div class="shape"><b>4. Multi-agent research</b><span class="small">Domains 1, 2, 5. Coordinator with the spawn tool allowed, parallel subagents, claim-source outputs, timeout propagation, and a conflicting-statistics case.</span></div></div></section>`;
-}
-function vPlan(){
-  const total=PLAN.reduce((a,w)=>a+w.items.length,0);const done=PLAN.reduce((a,w)=>a+w.items.filter(i=>store.plan[i[0]]).length,0);
-  const cw=store.planStart?Math.min(3,Math.floor((Date.now()-new Date(store.planStart+'T00:00:00'))/(7*86400000))):-1;let wk=-1;
-  return `<section class="panel stack"><div class="split"><div><h2>Four-week plan</h2><p class="muted small">${done} of ${total} steps done.${store.planStart?` Started ${esc(store.planStart)}.`:''}</p></div>${store.planStart?'':'<button class="btn primary" data-act="planstart">Start the plan today</button>'}</div>
-   <div class="prail">${PLAN.map(w=>{const n=w.items.filter(i=>store.plan[i[0]]).length;return `<i class="${n===w.items.length?'ok':n?'cur':''}"></i>`;}).join('')}</div></section>
-  ${PLAN.map((w,wi)=>{if(!w.x)wk++;return `<section class="panel"><div class="weekhd"><h3>${w.w}</h3>${(!w.x&&wk===cw)?'<span class="now">This week</span>':''}<span class="muted">${esc(w.t)}</span></div>${w.items.map(i=>`<label class="check"><input type="checkbox" data-plan="${i[0]}" ${store.plan[i[0]]?'checked':''}><span>${esc(i[1])}</span></label>`).join('')}</section>`;}).join('')}
-  <section class="panel stack"><h3>Official and free resources</h3><p class="small muted">From the third-party prep site, so confirm anything that matters with Anthropic.</p><div><a class="reslink" href="https://www.anthropic.com/learn" target="_blank" rel="noopener">Anthropic Academy, free courses</a><a class="reslink" href="https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification" target="_blank" rel="noopener">Certification page on the partner academy</a><a class="reslink" href="https://www.pearsonvue.com/us/en/anthropic.html" target="_blank" rel="noopener">Pearson VUE, Anthropic program</a><a class="reslink" href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code docs: skills</a><a class="reslink" href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a></div></section>`;
-}
+function vScenarios(){return vStudyScenarios();}
+function vPlan(){return vStudyPlan();}
 function vSyllabus(){
   const rows=[1,2,3,4,5].map(d=>`<section class="panel" style="--c:var(--d${d})"><div class="split"><h3>Domain ${d}: ${DOM[d].n}</h3><span class="tag" style="--c:var(--d${d})"><i></i>${DOM[d].w}% of exam</span></div>
-   ${TS.filter(t=>t.d===d).map(t=>{const s=tsStats(t.id);const r=store.rate[t.id]||0;return `<div class="tsrow"><span class="id">${t.id}</span><span>${esc(t.t)}</span>
+   ${TS.filter(t=>t.d===d).map(t=>{const s=tsStats(t.id);const r=store.rate[t.id]||0;return `<div class="tsrow" data-task="${t.id}"><span class="id">${t.id}</span><span>${esc(t.t)}</span>
      <div class="ctl"><span class="rate" role="group" aria-label="Self rating for ${t.id}">${['New','Shaky','OK','Solid'].map((n,i)=>`<button data-act="rate" data-id="${t.id}" data-v="${i}" aria-pressed="${r===i}">${n}</button>`).join('')}</span>
      <span class="small muted">${s.total?`${s.seen} of ${s.total} seen${s.seen?', '+pct(s.right,s.seen)+'% right':''}`:'no questions yet'}</span>
-     ${s.total?`<button class="btn ghost" data-act="tsdrill" data-v="${t.id}">Drill</button>`:''}</div></div>`;}).join('')}</section>`).join('');
+     ${s.total?studyLink(`practice/questions?task=${t.id}&count=10`,'Practice'):''}${studyLink(lessonPath(t.d,t.id),'Lesson')}${guideLink(taskPage(t.id),`Guide p. ${taskPage(t.id)}`)}</div></div>`;}).join('')}</section>`).join('');
   return `<section class="panel stack"><h2>Task statement checklist</h2><p class="muted small">Rate yourself honestly, then compare with your question accuracy.</p></section>${rows}
-   <section class="panel stack"><h3>Mock history</h3>${store.mocks.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>Correct</th><th>Rough scaled</th><th>D1</th><th>D2</th><th>D3</th><th>D4</th><th>D5</th></tr></thead><tbody>${store.mocks.slice().reverse().map(m=>`<tr><td>${esc(m.date)}</td><td>${m.pct}%</td><td>${m.scaled}</td>${[1,2,3,4,5].map(d=>`<td>${m.dom&&m.dom[d]!=null?m.dom[d]+'%':'-'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="muted small">No mock exams yet.</p>'}</section>
+   <section class="panel stack"><h3 id="study-history">Mock history</h3>${store.mocks.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>Correct</th><th>Rough scaled</th><th>D1</th><th>D2</th><th>D3</th><th>D4</th><th>D5</th></tr></thead><tbody>${store.mocks.slice().reverse().map(m=>`<tr><td>${esc(m.date)}</td><td>${m.pct}%</td><td>${m.scaled}</td>${[1,2,3,4,5].map(d=>`<td>${m.dom&&m.dom[d]!=null?m.dom[d]+'%':'-'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="muted small">No mock exams yet.</p>'}</section>
    <section class="panel stack"><h3>Reset</h3><p class="small muted">Clears all progress stored in this browser.</p>${resetAsk?`<div class="row"><span class="small"><b>Erase everything?</b></span><button class="btn primary" data-act="resetyes">Yes, erase</button><button class="btn" data-act="resetno">Cancel</button></div>`:`<div><button class="btn" data-act="resetask">Reset progress</button></div>`}</section>`;
 }
 
@@ -1404,7 +1391,9 @@ palEl.addEventListener('keydown',e=>{
 
 
 /*__APP__*/
+/*__EXPERIENCE__*/
 loadMock();
+experienceBoot();
 if(view==='mock'&&mock&&!mock.done&&mock.end<Date.now())finishMock();
 else render();
 window.__ccarf={Q,CARDS,store:()=>store,go,hint:()=>showHint(true),hints:v=>{hintsOn=v;if(!v)hideHint();}};
