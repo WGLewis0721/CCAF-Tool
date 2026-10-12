@@ -2,7 +2,7 @@
 
 Started studying for the CCAF, ended up creating a gamified study tool for it.
 
-CCAF-Tool is an unofficial study tool for the **Claude Certified Architect, Foundations** exam (exam code CCAR-F). It runs entirely in the browser as a single HTML page, so there is no server, database, or account to set up.
+CCAF-Tool is an unofficial study tool for the **Claude Certified Architect, Foundations** exam (exam code CCAR-F). It runs entirely in the browser as a single HTML page, so there is no server, database, or account to set up. Direct link https://wglewis0721.github.io/CCAF-Tool/
 
 > This project is not affiliated with or endorsed by Anthropic. The content is built from the public exam guide and Anthropic's public documentation.
 
