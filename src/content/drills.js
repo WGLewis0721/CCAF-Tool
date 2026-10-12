@@ -1,0 +1,96 @@
+const TELLS=[
+{s:"Refunds above $500 must never be processed without approval, yet the prompt rule gets skipped a few times a month.",r:1},
+{s:"The reviewer flags comment style as bugs, and developers have stopped reading its output.",r:2},
+{s:"The agent calls `get_customer` when asked about orders. Both tools have one-line descriptions.",r:3},
+{s:"The loop ends early because the code searches the reply for the words 'all done'.",r:4},
+{s:"The synthesis subagent writes a report with no citations. Its prompt just says 'synthesize the research'.",r:5},
+{s:"An agent with 18 tools picks the wrong one about one time in five.",r:6},
+{s:"The plan: escalate whenever the model's self-reported confidence drops below 6 out of 10.",r:7},
+{s:"The search subagent times out and returns an empty list marked as a success.",r:8},
+{s:"A nightly report job is costing too much on the real-time API, and nobody waits for the result.",r:9},
+{s:"After several rounds of summarizing, the exact refund amount and purchase date are gone.",r:10},
+{s:"Someone proposes telling the model to 'be conservative' to cut false positives.",r:2},
+{s:"A team wants to add a trained classifier to pre-select tools, but has never improved the tool descriptions.",r:3},
+{s:"A pre-merge check is moved to batch processing to get the 50% discount.",r:9},
+{s:"The agent decides it is finished because the response contains some assistant text.",r:4},
+{s:"The same session that wrote the code is asked to review it.",r:7},
+{s:"Two credible sources give 12% and 18%, and the report keeps only one number.",r:10},
+{s:"A subagent is assumed to know what the coordinator researched earlier.",r:5},
+{s:"Identity verification before refunds is written in the system prompt in capital letters.",r:1},
+{s:"A generic 'Operation failed' comes back for validation errors, permission errors, and outages alike.",r:8},
+{s:"The synthesis agent needs quick fact-checks, so it is handed the full set of web tools.",r:6}
+];
+const SHAPEQ=[
+{c:"The agent sometimes skips identity verification before refunds.",o:"Put 'verify the customer first' in capital letters at the top of the system prompt.",s:0,w:"A prompt is a request. The requirement is a guarantee, so it needs a gate in code."},
+{c:"The agent keeps confusing two tools that have one-line descriptions.",o:"Build a keyword router that pre-selects the tool before every turn.",s:1,w:"The cheap fix, better descriptions, has not been tried. A router is a big build for a small cause."},
+{c:"The agent escalates easy cases and handles hard ones itself.",o:"Escalate automatically whenever customer sentiment turns negative.",s:3,w:"Sentiment measures mood, not how hard the case is."},
+{c:"The agent escalates easy cases and handles hard ones itself.",o:"Have the agent rate its own confidence from 1 to 10 and escalate below a threshold.",s:3,w:"Self-reported confidence is poorly calibrated, and the agent is already confidently wrong on the hard cases."},
+{c:"The escalation boundaries in the prompt are unclear.",o:"Train a separate classifier on historical tickets to predict which ones need a human.",s:1,w:"It needs labeled data and ML infrastructure before simple prompt criteria have been tried."},
+{c:"A single-pass review of a 14-file pull request is inconsistent.",o:"Ask developers to split large pull requests into 3 or 4 files before review runs.",s:4,w:"It hands the work to developers and leaves the system unchanged."},
+{c:"A single-pass review of a 14-file pull request is inconsistent.",o:"Switch to a model with a larger context window so all 14 files fit comfortably.",s:2,w:"The problem is attention across many files, not whether they fit."},
+{c:"A single-pass review of a 14-file pull request is inconsistent.",o:"Run three full passes and report only issues that show up in at least two.",s:3,w:"Requiring agreement suppresses real bugs that are only caught intermittently."},
+{c:"A research report covers only visual arts and misses music, writing and film.",o:"Expand the web search agent's queries to cover more creative sectors.",s:2,w:"The search agent did what it was assigned. The coordinator's decomposition is the cause."},
+{c:"A customer message contains three separate concerns.",o:"Ask the customer to submit a separate request for each concern.",s:4,w:"The customer has to do work the agent should do."},
+{c:"The agent forgets the exact refund amount quoted earlier in a long session.",o:"Have the agent ask the customer to repeat their details whenever it is unsure.",s:4,w:"It pushes the cost onto the customer instead of keeping a case-facts block."},
+{c:"A tool result carries 40 fields and fills the context window.",o:"Move to a model with a bigger context window.",s:2,w:"It makes room but keeps the clutter, and the tokens are still spent."},
+{c:"The extraction model invents PO numbers that are not in the document.",o:"Add 'never hallucinate' to the extraction prompt.",s:0,w:"A reminder is probabilistic. Making the field nullable removes the pressure to invent."},
+{c:"The code review has many false positives.",o:"Tell the reviewer to be conservative and only report high-confidence findings.",s:0,w:"General wording does not draw a line. Specific categorical criteria do."},
+{c:"The code review has many false positives.",o:"Tell developers to ignore the low-severity comments.",s:4,w:"It leaves the noise in place and asks developers to filter it."},
+{c:"The session that generated the code reviews it and finds little.",o:"Ask the same session to review its own work more carefully.",s:3,w:"It keeps the reasoning that produced the code, so it rarely questions it. Use an independent instance."},
+{c:"A skill floods the main conversation with verbose output.",o:"Add `allowed-tools: Read` to the skill's frontmatter.",s:2,w:"That restricts tools, not output volume. `context: fork` isolates the output."},
+{c:"Test files sit next to the code across many directories and must follow one convention.",o:"Place a separate CLAUDE.md in every subdirectory.",s:2,w:"Directory files are bound to their directory and cannot follow a file type across the tree."},
+{c:"The team needs a required tool order for refunds.",o:"Add few-shot examples that always show the right order.",s:0,w:"Examples improve odds but cannot guarantee order."},
+{c:"Two similar tools get confused.",o:"Merge both into one lookup tool that decides internally which backend to query.",s:1,w:"Valid as an architecture, but heavier than rewriting the descriptions as a first step."}
+];
+const AXIS=[
+{s:"A skill must never call Write or Bash.",c:"allowed-tools",x:"context: fork",w:"Permission axis. context: fork isolates context and says nothing about which tools may run."},
+{s:"A codebase-analysis skill dumps thousands of lines into the main chat.",c:"context: fork",x:"allowed-tools",w:"Isolation axis. allowed-tools governs tools, not how much output lands in the conversation."},
+{s:"Developers run a skill without giving the ticket ID it needs.",c:"argument-hint",x:"context: fork",w:"argument-hint prompts for the missing parameter. fork is about isolation."},
+{s:"A /deploy skill with side effects must run only when a developer types it. (Beyond the guide.)",c:"disable-model-invocation: true",x:"user-invocable: false",w:"user-invocable: false is the reverse: it hides the skill from the menu so only Claude can use it."},
+{s:"The extractor put a correct vendor name in the customer_name field.",c:"Retry with the failed output and the error",x:"Make the field nullable",w:"The value exists in the source, so feedback can redirect it. Nullable is for values that are absent."},
+{s:"The invoice has no due date printed anywhere on it.",c:"Nullable field plus review",x:"Retry with error feedback",w:"Retry needs the correct answer to exist in the input. Absent data needs a null and a review path."},
+{s:"Refunds over $500 must never process without approval.",c:"Interception hook",x:"Stronger prompt wording",w:"A prompt is a request and a hook is a guarantee."},
+{s:"Deciding when the agent loop ends.",c:"stop_reason is end_turn",x:"An iteration cap as the main rule",w:"stop_reason is the structured signal. A cap is only a backstop."},
+{s:"Two similar tools keep getting confused.",c:"Rewrite the descriptions",x:"Merge them into one tool",w:"Descriptions are the cheapest root cause. Merging is the heavier fix."},
+{s:"Team standards must reach every teammate who clones the repo.",c:"Project CLAUDE.md",x:"~/.claude/CLAUDE.md",w:"Project scope travels with the repo. Home scope is personal."},
+{s:"One test convention must apply to test files scattered across many folders.",c:"Path-scoped rules in .claude/rules/",x:"A CLAUDE.md in every directory",w:"Glob paths follow a file type anywhere. Directory files are bound to their folder."},
+{s:"A pre-merge check that developers wait on.",c:"Synchronous API",x:"Message Batches",w:"Batches have no latency guarantee and can take 24 hours."},
+{s:"An overnight report that nobody waits for.",c:"Message Batches",x:"Synchronous API",w:"A batch saves 50% when latency does not matter."},
+{s:"A subagent needs findings the coordinator gathered earlier.",c:"Put them in the subagent's prompt",x:"Assume shared memory",w:"Subagents start blank. Nothing is inherited or shared."},
+{s:"Compare two refactor approaches starting from one shared analysis.",c:"fork_session",x:"--resume",w:"Forking creates independent branches from a baseline. Resume continues a single conversation."},
+{s:"Continue yesterday's investigation exactly where it stood.",c:"--resume with the session name",x:"fork_session",w:"Resume picks up one conversation. Fork branches it."},
+{s:"The document type is unknown and some extraction tool must run.",c:"tool_choice: any",x:"tool_choice: auto",w:"any guarantees a tool call. auto may return plain text."},
+{s:"The reviewer labels the same pattern critical in one run and minor in the next.",c:"Explicit criteria plus examples",x:"A strict JSON schema",w:"A schema fixes shape. Judgment needs definitions and examples."},
+{s:"A large migration with two possible infrastructure approaches.",c:"Plan mode first",x:"Direct execution",w:"Architectural choices and many files call for exploring before editing."},
+{s:"A one-line fix with a clear stack trace.",c:"Direct execution",x:"Plan mode",w:"Small well-scoped changes do not need ceremony."}
+];
+const SHAPENAMES=["A probabilistic fix for a deterministic need","Over-engineered","Solves the wrong problem","Unreliable proxy","Shifts the burden"];
+const PLAN=[
+{w:"Fix list",x:1,t:"The two misses a colleague flagged, and the habit behind them",items:[
+ ["f1","Read the Level 3 key moves and the Items entries for skill fields: allowed-tools, context: fork, argument-hint (in the guide) and disallowed-tools, disable-model-invocation, user-invocable (Claude Code docs)"],
+ ["f2","Say the contrast out loud: allowed-tools is the permission axis, context: fork is the isolation axis, and a skill can use both"],
+ ["f3","Answer the self-checks: a skill that may only Read and Grep, and whether fork and allowed-tools can combine"],
+ ["f4","Sort five failures into retry or not: wrong field, wrong format, absent value, conflicting source, cut-off scan"],
+ ["f5","Run Pick the axis until you reach 9 of 10, then drill tasks 3.2 and 4.4 from the Home heat map"],
+ ["f6","Apply the axis question to every pair you meet: what does this mechanism actually operate on?"]]},
+{w:"Week 1",t:"Learn the shape of the exam and own Domain 1",items:[
+ ["p1a","Read the exam guide sections 3 to 6 once, then the Playbook in this tool"],
+ ["p1b","Do 30 Domain 1 questions and reach 70% or better"],
+ ["p1c","Build the agent from Exercise 1 (loop on stop_reason, structured errors, one interception hook)"],
+ ["p1d","Clear all Exam facts and Domain 1 flashcards twice"]]},
+{w:"Week 2",t:"Domains 2 and 3: tools, MCP, and Claude Code configuration",items:[
+ ["p2a","Do 30 questions each for Domains 2 and 3"],
+ ["p2b","Configure a real repo: project CLAUDE.md, a path-scoped rule, a forked skill, an .mcp.json with env expansion (Exercise 2)"],
+ ["p2c","Write descriptions for two near-identical tools and test them on ambiguous requests"],
+ ["p2d","Work through the Spot the tell drill until 9 of 10 is routine"]]},
+{w:"Week 3",t:"Domains 4 and 5: prompts, structured output, context, reliability",items:[
+ ["p3a","Do 30 questions each for Domains 4 and 5"],
+ ["p3b","Build the extraction pipeline from Exercise 3, including a retry loop and a 100-document batch plan"],
+ ["p3c","Build the research pipeline from Exercise 4 with a forced timeout and a conflicting-statistics case"],
+ ["p3d","Run the Name the shape drill until you can label a distractor in under 10 seconds"]]},
+{w:"Week 4",t:"Mock exams and weak spots",items:[
+ ["p4a","Take two full mock exams under the 120-minute clock"],
+ ["p4b","Drill every task statement that shows red on the Home heat map"],
+ ["p4c","Re-read the ten decision rules and the five wrong-answer shapes the night before"],
+ ["p4d","Check ID name match, test-center or online-proctor setup, and your start time"]]}
+];
