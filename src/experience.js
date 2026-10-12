@@ -11,7 +11,7 @@ function sourceLine(ids,extra=[]){
 }
 function studyLink(path,label,cls=''){return `<a class="study-link ${cls}" href="#${path}">${esc(label)}<span aria-hidden="true"> →</span></a>`;}
 function studyArt(name,cls=''){return `<svg class="study-art ${cls}" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><use href="#study-art-${name}" width="100" height="100"/></svg>`;}
-function mapSprite(position,x,y,width,height){return `<foreignObject class="map-art" x="${x}" y="${y}" width="${width}" height="${height}"><div xmlns="http://www.w3.org/1999/xhtml" class="map-sprite" style="background-position:${position}% 0%"></div></foreignObject><rect x="${x}" y="${y}" width="${width}" height="${height}" fill="transparent" pointer-events="all"/>`;}
+function mapSprite(position,x,y,width,height){return `<foreignObject class="map-art" x="${x}" y="${y}" width="${width}" height="${height}"><div xmlns="http://www.w3.org/1999/xhtml" class="map-sprite" style="background-position:${position}% 0%"></div></foreignObject><rect class="map-hit-area" x="${x}" y="${y}" width="${width}" height="${height}" fill="transparent" stroke="none" pointer-events="all"/>`;}
 function mapOutpost(col){return `<g class="ico"><ellipse cx="0" cy="16" rx="19" ry="6" fill="${col}" opacity=".25"/><ellipse cx="0" cy="16" rx="19" ry="6" fill="none" stroke="${col}" stroke-width="1.7"/>${mapSprite(0,-24,-30,48,48)}</g>`;}
 function mapFort(hp){return `<g class="ico">${mapSprite(50,-40,-45,80,80)}<rect x="-27" y="-44" width="54" height="4" rx="2" fill="#263243"/><rect x="-27" y="-44" width="${54*hp/100}" height="4" rx="2" fill="#DB5A50"/></g>`;}
 function mapCreep(){return `<g class="ico">${mapSprite(100,-29,-32,58,58)}</g>`;}

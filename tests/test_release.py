@@ -72,6 +72,7 @@ def run(playwright, profile):
     page.locator('.mode[data-mk="1"]').click()
     assert page.locator('h1').inner_text() == 'Campaign Mode'
     assert page.locator('.cmap [data-k^="ts:"]').count() == 30
+    assert page.locator('.cmap .map-hit-area').first.evaluate('(element)=>getComputedStyle(element).stroke') == 'none'
     page.locator('[data-k="ts:1.1"]').click()
     assert page.locator('.selinfo h3').inner_text() == 'Task 1.1'
     no_overflow(page, name + ' campaign')
