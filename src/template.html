@@ -827,18 +827,23 @@ function record(qid,ok){const p=store.answers[qid]||{n:0,c:0};store.answers[qid]
 const sameSet=(a,b)=>a.length===b.length&&a.every(x=>b.includes(x));
 
 /* ---------- stats ---------- */
+const STALE_DAYS=14,FADE_DAYS=56,AGE_FLOOR=0.5;
+function evW(a){const age=(Date.now()-(a.t||Date.now()))/86400000;return age<=STALE_DAYS?1:Math.max(AGE_FLOOR,1-(age-STALE_DAYS)/FADE_DAYS*(1-AGE_FLOOR));}
+function daysToExam(){if(!store.examDate)return null;const d=Math.ceil((new Date(store.examDate+'T00:00:00')-new Date())/86400000);return d>=0?d:null;}
+function urgency(){const d=daysToExam();return d===null?0:d<=14?1:d<=45?0.5:0.2;}
 function domStats(){
   const s=[null];
   for(let d=1;d<=5;d++){
-    const qs=Q.filter(q=>q.d===d);let seen=0,right=0;
-    qs.forEach(q=>{const a=store.answers[q.id];if(a){seen++;if(a.last)right++;}});
-    const acc=seen?right/seen:0;
-    s.push({total:qs.length,seen,right,acc,ready:acc*Math.min(1,seen/Math.max(1,0.6*qs.length))});
+    const qs=Q.filter(q=>q.d===d);let seen=0,right=0,sw=0,rw=0,stale=0;
+    qs.forEach(q=>{const a=store.answers[q.id];if(a){const w=evW(a);seen++;sw+=w;if(w<1)stale++;if(a.last){right++;rw+=w;}}});
+    const acc=seen?right/seen:0,wacc=sw?rw/sw:0,fresh=seen?sw/seen:1;
+    s.push({total:qs.length,seen,right,acc,stale,ready:wacc*Math.min(1,seen/Math.max(1,0.6*qs.length))*fresh});
   }
   return s;
 }
 function overall(ds){let t=0;for(let d=1;d<=5;d++)t+=DOM[d].w*ds[d].ready;return t/100;}
 function tsStats(id){const qs=Q.filter(q=>q.ts===id);let seen=0,right=0;qs.forEach(q=>{const a=store.answers[q.id];if(a){seen++;if(a.last)right++;}});return {total:qs.length,seen,right};}
+function examNote(){const d=daysToExam();return (d===null?'Set a date to see a countdown, and Smart mix and flashcards will lean toward your weaker areas as it gets close.':`${d} ${d===1?'day':'days'} left. Smart mix leans toward your weakest domains, and flashcards come back sooner as the date gets close.`)+' Answers older than two weeks count for less in your readiness. Progress is saved in this browser only.';}
 function cardKey(c){return c.d+'|'+c.f;}
 function dueCount(){const now=Date.now();return CARDS.filter(c=>{const s=store.cards[cardKey(c)];return !s||s.due<=now;}).length;}
 
@@ -888,41 +893,6 @@ document.addEventListener('click',e=>{
 });
 
 /* ---------- Home ---------- */
-const SKN={1:'Agentic',2:'Tools, MCP',3:'Claude Code',4:'Prompts',5:'Context'};
-function traceHtml(ds,anim){
-  const U=8,W=640,G=304,MAXH=184,gap=16,pad=8;const usable=W-pad*2-gap*4;
-  let x=pad,best=-1,bestD=0,out='',stars='';
-  let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
-  for(let k=0;k<34;k++){const sx=Math.floor(rnd()*W/4)*4,sy=Math.floor(rnd()*(G-90)/4)*4+4,sz=rnd()<.25?4:2;stars+=`<rect x="${sx}" y="${sy}" width="${sz}" height="${sz}" fill="#F4F1FF" opacity="${(.25+rnd()*.5).toFixed(2)}"/>`;}
-  const tw=ORDER.map((d,i)=>{
-    const w=Math.round(usable*DOM[d].w/100/U)*U;const tx=x;x+=w+gap;
-    const r=ds[d].ready;const hb=Math.max(U,Math.round(r*MAXH/U)*U);const top=G-hb;
-    if(r>best){best=r;bestD=i;}
-    const c=`var(--d${d})`;let g='';
-    g+=`<rect x="${tx}" y="${top}" width="${w}" height="${hb}" fill="${c}"/>`;
-    g+=`<rect x="${tx+w-U}" y="${top}" width="${U}" height="${hb}" fill="#000" opacity=".35"/>`;
-    for(let bx=tx;bx<tx+w;bx+=U*2)g+=`<rect x="${bx}" y="${top-U}" width="${U}" height="${U}" fill="${c}"/>`;
-    for(let wy=top+U*2;wy<=G-U*3;wy+=U*3){for(let wx=tx+U;wx<=tx+w-U*3;wx+=U*2){const lit=((wx/U)*3+(wy/U)*5+d)%5!==0;g+=`<rect x="${wx}" y="${wy}" width="${U}" height="${U}" fill="${lit?'#FFE600':'#05040C'}"/>`;}}
-    const pctv=Math.round(r*100);
-    return {tx,w,top,d,i,html:`<g class="tw" data-act="quick" data-d="${d}" role="button" tabindex="0" aria-label="Domain ${d}, ${DOM[d].n}: ${pctv} percent ready. Drill it.">
-      <rect class="lot lotr" x="${tx}" y="${G-MAXH}" width="${w}" height="${MAXH}"/>
-      <g class="tb" style="--i:${i}">${g}</g>
-      <rect x="${tx}" y="${G-MAXH-40}" width="${w}" height="${MAXH+96}" fill="transparent"/>
-      <text class="pcl" x="${tx+w/2}" y="${top-U*2-6}" text-anchor="middle">${pctv}%</text>
-      <text class="dl2" x="${tx}" y="${G+30}" fill="${c}">D${d}</text>
-      <text class="nm2" x="${tx}" y="${G+52}">${SKN[d]}</text><text class="nm2 wt" x="${tx}" y="${G+72}">${DOM[d].w}% of exam</text></g>`};});
-  out=tw.map(t=>t.html).join('');
-  let ground='';for(let gx=0;gx<W;gx+=U*2)ground+=`<rect x="${gx}" y="${G}" width="${U*2-2}" height="${U-2}" fill="#2B2BFF"/>`;
-  const bt=tw[bestD];const bs=4;const bx0=Math.round((bt.tx+bt.w/2-20)/4)*4,by0=Math.max(0,bt.top-U*2-6-22-56);
-  const bot=archRects('cheer',bx0,by0,bs);
-  return `<div class="trace ${anim?'intro':''}"><svg class="skl" viewBox="0 0 ${W} ${G+80}" role="group" aria-label="Readiness skyline: one tower per domain, width is exam weight, height is readiness">${stars}${out}${ground}<g class="bot">${bot}</g></svg></div>`;
-}
-function heatHtml(){
-  return `<div class="heat">${[1,2,3,4,5].map(d=>`<div class="hrow" style="--c:var(--d${d})"><span class="dl">D${d}</span><div class="hcells">${TS.filter(t=>t.d===d).map(t=>{
-    const s=tsStats(t.id);let c='s0';
-    if(s.seen){const a=s.right/s.seen;c=a>=0.8?'hi':a>=0.5?'mid':'lo';}
-    return `<button class="cell ${c}" data-act="tsdrill" data-v="${t.id}" title="${esc(t.id+' '+t.t)}" aria-label="Task ${t.id}: ${esc(t.t)}. ${s.seen?pct(s.right,s.seen)+' percent right':'not seen yet'}">${t.id.slice(2)}</button>`;}).join('')}</div></div>`).join('')}</div>`;
-}
 function streakHtml(){
   const set=new Set(store.days);const end=new Date();
   const cells=[];let n=0;const dow=(end.getDay()+6)%7;
@@ -930,44 +900,6 @@ function streakHtml(){
   for(let i=total-1;i>=0;i--){const d=new Date(end);d.setDate(end.getDate()-i);const on=set.has(dkey(d));if(on)n++;cells.push(`<i class="${on?'on':''} ${i===0?'today':''}" title="${dkey(d)}"></i>`);}
   return {html:`<div class="streak" role="img" aria-label="${n} study days in the last 18 weeks">${cells.join('')}</div>`,n};
 }
-function vHomeOld(){
-  const ds=domStats();const o=overall(ds);const seenAll=Q.filter(q=>store.answers[q.id]).length;
-  let best=1,bs=-1;for(let d=1;d<=5;d++){const g=DOM[d].w*(1-ds[d].ready);if(g>bs){bs=g;best=d;}}
-  const callD=seenAll?best:0;
-  const why=seenAll?`${DOM[best].w}% of the exam, ${ds[best].seen} of ${ds[best].total} seen, ${ds[best].seen?pct(ds[best].right,ds[best].seen):0}% right`:'no data yet, so start with a mixed baseline';
-  const due=dueCount();const sk=streakHtml();
-  const lastMock=store.mocks[store.mocks.length-1];
-  return `
-  <div class="pagehead"><h1>Study desk</h1><p>60 items, 4 of 6 scenarios, 120 minutes, pass at 720 of 1,000. Everything here is built around the blueprint weights.</p></div>
-  <section class="panel hero">
-    <div class="traceTop"><h2>Readiness against the blueprint</h2><div class="bignum"><span id="bn" data-v="${Math.round(o*100)}">${Math.round(o*100)}</span>%<small>estimate, weighted by domain</small></div></div>
-    ${traceHtml(ds,intro)}
-    <p class="small muted" style="margin-top:14px;max-width:70ch">One tower per domain. Width is the domain's share of the exam; height is your readiness, meaning accuracy on your latest answers, discounted until you have seen about 60% of its questions. The dashed outline is a full build. Tap a tower to drill it. Mock exams are the better predictor; aim for 80% or more.</p><button class="press" data-act="quick" data-d="${callD}">Press start</button>
-  </section>
-  <div class="cols two">
-    <section class="panel stack"><h3>Suggested next call</h3>
-      <div class="call" aria-label="Suggested next practice session"><span class="k">drill_domain({</span>
-  <span class="k">domain:</span> <span class="v">${callD||'"all"'}</span>,
-  <span class="k">questions:</span> <span class="v">10</span>,
-  <span class="k">why:</span> <span class="hl">"${esc(why)}"</span>
-<span class="k">})</span></div>
-      <div class="row"><button class="btn primary" data-act="quick" data-d="${callD}">Run it</button><button class="btn" data-go="mock">Take a mock exam</button></div>
-    </section>
-    <section class="panel stack"><h3>Other ways in</h3>
-      <button class="btn" style="text-align:left" data-go="guide"><b>Guidebook.</b> <span class="muted">Levels, bosses, bestiary, items, and maps.</span></button>
-      <button class="btn" style="text-align:left" data-act="opendrill" data-v="tell"><b>Spot the tell.</b> <span class="muted">Match a one-line situation to its rule.</span></button>
-      <button class="btn" style="text-align:left" data-act="opendrill" data-v="shape"><b>Name the shape.</b> <span class="muted">Classify a wrong answer.</span></button>
-      <button class="btn" style="text-align:left" data-go="cards"><b>Flashcards.</b> <span class="muted">${due} due now.</span></button>
-    </section>
-  </div>
-  <section class="panel stack"><div class="split"><h3>Task statements</h3><div class="legend"><span><i style="background:var(--panel2)"></i>Not seen</span><span><i style="background:color-mix(in srgb,var(--bad) 24%,var(--panel));border-color:var(--bad)"></i>Under 50%</span><span><i style="background:color-mix(in srgb,var(--warn) 24%,var(--panel));border-color:var(--warn)"></i>50 to 79%</span><span><i style="background:color-mix(in srgb,var(--good) 26%,var(--panel));border-color:var(--good)"></i>80% or more</span></div></div>
-    ${heatHtml()}<p class="small muted">All 30 task statements from the guide. Tap a square to drill that task.</p></section>
-  <div class="cols even">
-    <section class="panel stack"><h3>Study days</h3>${sk.html}<p class="small muted">${sk.n} study days in the last 18 weeks. Current streak ${streak()}. Questions seen: ${seenAll} of ${Q.length}.${lastMock?` Last mock: ${lastMock.pct}%.`:''}</p></section>
-    <section class="panel stack"><h3>Exam date</h3><input type="date" id="examDate" value="${esc(store.examDate)}" aria-label="Exam date"><p class="small muted">Set it to see a countdown in the sidebar. Progress is saved in this browser only.</p></section>
-  </div>`;
-}
-
 /* ---------- Practice ---------- */
 function practiceHead(cur){
   const tabs=[['q','Questions'],['cards','Flashcards'],['mock','Mock exam'],['tell','Spot the tell'],['shape','Name the shape'],['axis','Pick the axis']];
@@ -988,13 +920,14 @@ function pool(){
   let p=Q.filter(q=>(!cfg.d||q.d===cfg.d)&&(!cfg.sc||q.sc===cfg.sc)&&(!cfg.ts||q.ts===cfg.ts));
   if(cfg.mode==='new')p=p.filter(q=>!store.answers[q.id]);
   else if(cfg.mode==='missed')p=p.filter(q=>store.answers[q.id]&&!store.answers[q.id].last);
+  else if(cfg.mode==='tough')p=p.filter(q=>{const a=store.answers[q.id];return a&&a.n>=2&&a.c/a.n<0.6;});
   else if(cfg.mode==='flag')p=p.filter(q=>store.flags[q.id]);
   else if(cfg.mode==='off')p=p.filter(q=>q.off);
   return p;
 }
 function vSetup(){
   const p=pool();
-  const modes=[['smart','Smart mix'],['new','Unseen only'],['missed','Missed only'],['flag','Flagged'],['off','Official samples']];
+  const modes=[['smart','Smart mix'],['new','Unseen only'],['missed','Missed only'],['tough','Tough for me'],['flag','Flagged'],['off','Official samples']];
   return `<section class="panel stack" style="gap:20px">
    <div><div class="fieldlbl">Domain</div><div class="seg">${[0,1,2,3,4,5].map(d=>`<button data-act="cfg" data-k="d" data-v="${d}" aria-pressed="${cfg.d===d}">${d?`D${d} ${DOM[d].s}`:'All domains'}</button>`).join('')}</div></div>
    <div class="cols even">
@@ -1003,18 +936,26 @@ function vSetup(){
    </div>
    <div><div class="fieldlbl">Which questions</div><div class="seg">${modes.map(m=>`<button data-act="cfg" data-k="mode" data-v="${m[0]}" aria-pressed="${cfg.mode===m[0]}">${m[1]}</button>`).join('')}</div></div>
    <div><div class="fieldlbl">How many</div><div class="seg">${[5,10,20,0].map(n=>`<button data-act="cfg" data-k="n" data-v="${n}" aria-pressed="${cfg.n===n}">${n||'All'}</button>`).join('')}</div></div>
-   <div class="row"><button class="btn primary" data-act="start" ${p.length?'':'disabled'}>Start practice</button><span class="muted small">${p.length} question${p.length===1?'':'s'} match${p.length===1?'es':''} these filters</span></div>
+   <div class="row"><button class="btn primary" data-act="start" ${p.length?'':'disabled'}>Start practice</button><button class="btn" data-act="baseline" title="15 questions split across the domains in proportion to the exam blueprint">Baseline check, 15 questions</button><span class="muted small">${p.length} question${p.length===1?'':'s'} match${p.length===1?'es':''} these filters</span>${cfg.ts||cfg.d?studyLink(lessonPath(cfg.ts?+cfg.ts[0]:cfg.d,cfg.ts||''),cfg.ts?'Read the lesson for task '+cfg.ts+' first':'Read the Domain '+cfg.d+' lesson first'):''}</div>
   </section>`;
 }
 function buildQueue(p,n){
   let o;
   if(cfg.mode==='smart'){
-    const miss=shuffle(p.filter(q=>store.answers[q.id]&&!store.answers[q.id].last));
-    const nw=shuffle(p.filter(q=>!store.answers[q.id]));
-    const ok=shuffle(p.filter(q=>store.answers[q.id]&&store.answers[q.id].last));
-    o=miss.concat(nw,ok);if(n)o=o.slice(0,n);o=shuffle(o);
+    const miss=p.filter(q=>store.answers[q.id]&&!store.answers[q.id].last);
+    const nw=p.filter(q=>!store.answers[q.id]);
+    const ok=p.filter(q=>store.answers[q.id]&&store.answers[q.id].last);
+    const ds=domStats(),u=urgency();
+    const weakFirst=a=>a.map(q=>[(1-ds[q.d].ready)*u+Math.random()*0.6,q]).sort((x,y)=>y[0]-x[0]).map(x=>x[1]);
+    const stale=ok.filter(q=>evW(store.answers[q.id])<1),fresh=ok.filter(q=>evW(store.answers[q.id])>=1);
+    o=weakFirst(miss).concat(weakFirst(nw),weakFirst(stale),weakFirst(fresh));if(n)o=o.slice(0,n);o=shuffle(o);
   }else{o=shuffle(p);if(n)o=o.slice(0,n);}
   return o;
+}
+function baselineQueue(){
+  const plan={1:4,2:3,3:3,4:3,5:2};let o=[];
+  for(const d in plan)o=o.concat(shuffle(Q.filter(q=>q.d===+d&&q.a.length===1)).slice(0,plan[d]));
+  return shuffle(o);
 }
 function mkItem(q){return {id:q.id,perm:shuffle(q.o.map((_,i)=>i)),sel:[],done:false,ok:null};}
 function tags(q){
@@ -1175,7 +1116,7 @@ function vMockResult(){
   <section class="panel stack"><h3>By domain</h3><div class="trace">${trace}</div></section>
   <section class="panel stack"><h3>By scenario</h3><div class="grid3">${mock.scs.map(s=>`<div class="shape"><b>${pct(r.sc[s].c,r.sc[s].n)}%</b><span class="small muted">Scenario ${s}: ${esc(SC[s].n)}</span></div>`).join('')}</div></section>
   <section class="panel stack"><h3>Study these next</h3>${todo.length?todo.map(([id,n])=>`<div class="todo"><span class="id">${id}</span><span>${esc(TS.find(t=>t.id===id).t)} <span class="muted">(missed ${n})</span></span><button class="btn" style="min-height:34px;padding:3px 12px" data-act="tsdrill" data-v="${id}">Drill</button></div>`).join(''):'<p>Nothing missed. Take another mock to be sure.</p>'}</section>
-  <section class="panel stack"><h3>Review missed items (${wrong.length})</h3>${wrong.length?wrong.map(it=>{const q=byId[it.id];return `<details class="rule"><summary><span class="rn" style="font-size:1rem">${q.ts}</span><span class="rt" style="font-weight:600">${fmt(q.q.length>140?q.q.slice(0,138)+'...':q.q)}</span></summary><div class="rbody"><div><b>You chose</b>${it.sel.length?it.sel.map(a=>fmt(q.o[a])).join(' / '):'No answer'}</div><div><b>Correct answer</b>${q.a.map(a=>fmt(q.o[a])).join(' / ')}</div><div><b>Why</b>${fmt(q.e)}</div>${q.r?`<div><b>Rule ${q.r}</b>${esc(RULES[q.r].n)}</div>`:''}</div></details>`;}).join(''):'<p>Perfect score.</p>'}</section>
+  <section class="panel stack"><h3>Review missed items (${wrong.length})</h3>${wrong.length?wrong.map(it=>{const q=byId[it.id];return `<details class="rule"><summary><span class="rn" style="font-size:1rem">${q.ts}</span><span class="rt" style="font-weight:600">${fmt(q.q.length>140?q.q.slice(0,138)+'...':q.q)}</span></summary><div class="rbody"><div><b>You chose</b>${it.sel.length?it.sel.map(a=>fmt(q.o[a])).join(' / '):'No answer'}</div><div><b>Correct answer</b>${q.a.map(a=>fmt(q.o[a])).join(' / ')}</div><div><b>Why</b>${fmt(q.e)}</div>${q.r?`<div><b>Rule ${q.r}</b>${esc(RULES[q.r].n)}</div>`:''}${sourceLine([q.ts])}</div></details>`;}).join(''):'<p>Perfect score.</p>'}</section>
   <div class="row"><button class="btn primary" data-act="mockreset">Back to mock exam</button><button class="btn" data-act="missed">Practice my misses</button></div>`;
 }
 
@@ -1208,7 +1149,7 @@ const BOX_DAYS=[0,1,3,7,14];
 function rateCard(good){
   if(!cardQ||!cardQ.length)return;
   const key=cardQ.shift();const s=store.cards[key]||{box:0,due:0};
-  if(good){s.box=Math.min(4,s.box+1);s.due=Date.now()+BOX_DAYS[s.box]*86400000;}
+  if(good){s.box=Math.min(4,s.box+1);let days=BOX_DAYS[s.box];const left=daysToExam();if(left!==null){days=Math.min(days,Math.max(1,left-1));if(left<=14)days=Math.max(1,Math.ceil(days/2));}s.due=Date.now()+days*86400000;}
   else{s.box=0;s.due=0;cardQ.push(key);}
   store.cards[key]=s;touchDay();save();flipped=false;render();
 }
@@ -1221,9 +1162,9 @@ function vLibrary(){
 }
 function vPlaybook(){
   const cols=['var(--d1)','var(--d2)','var(--d3)','var(--d4)','var(--d5)'];
-  return `<section class="panel"><h2>Ten decision rules</h2><p class="muted" style="margin:6px 0 10px;max-width:62ch">When two options both look plausible, find the rule in play. Most scenario questions are one of these ten wearing a different costume.</p>
+  return `<section class="panel"><div class="split"><h2>Ten decision rules</h2><span class="row"><button class="btn ghost no-print" data-act="printtab">Print this tab</button><button class="btn ghost no-print" data-act="printsheet">Print exam-day sheet</button></span></div><p class="muted" style="margin:6px 0 10px;max-width:62ch">When two options both look plausible, find the rule in play. Most scenario questions are one of these ten wearing a different costume.</p>
    ${RULES.slice(1).map((r,i)=>`<details class="rule" ${i===0?'open':''} style="--c:${cols[i%5]}"><summary><span class="rn">${i+1}</span><span class="rt">${esc(r.n)}<span class="rtell">${esc(r.tell)}</span></span></summary><div class="rbody"><div><b>What the right answer looks like</b>${esc(r.fix)}</div><div><b>Typical wrong answers</b>${esc(r.trap)}</div>${sourceLine(RULE_TASKS[i+1])}</div></details>`).join('')}</section>
-  <section class="panel stack"><h2 id="study-shapes">Five wrong-answer shapes</h2><div class="grid3">${SHAPES.map((s,i)=>`<div class="shape">${studyArt(['messages','workshop','controller','validation','provenance'][i])}<span class="small muted">Shape ${i+1}</span><b>${esc(s.n)}</b><span class="small">${esc(s.d)}</span></div>`).join('')}</div>
+  <section class="panel stack"><h2 id="study-shapes">Five wrong-answer shapes</h2><div class="grid3">${SHAPES.map((s,i)=>`<div class="shape">${studyArt(['messages','workshop','controller','validation','provenance'][i])}<span class="small muted">Shape ${i+1}</span><b>${esc(s.n)}</b><span class="small">${esc(s.d)}</span>${shapeDetail(i)}</div>`).join('')}</div>
    <div class="row"><button class="btn primary" data-act="opendrill" data-v="shape">Practice naming the shapes</button><button class="btn" data-act="opendrill" data-v="tell">Practice spotting the tell</button></div></section>`;
 }
 function vScenarios(){return vStudyScenarios();}
@@ -1236,7 +1177,7 @@ function vSyllabus(){
      ${s.total?studyLink(`practice/questions?task=${t.id}&count=10`,'Practice'):''}${studyLink(lessonPath(t.d,t.id),'Lesson')}${guideLink(taskPage(t.id),`Guide p. ${taskPage(t.id)}`)}</div></div>`;}).join('')}</section>`).join('');
   return `<section class="panel stack"><h2>Task statement checklist</h2><p class="muted small">Rate yourself honestly, then compare with your question accuracy.</p></section>${rows}
    <section class="panel stack"><h3 id="study-history">Mock history</h3>${store.mocks.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>Correct</th><th>Rough scaled</th><th>D1</th><th>D2</th><th>D3</th><th>D4</th><th>D5</th></tr></thead><tbody>${store.mocks.slice().reverse().map(m=>`<tr><td>${esc(m.date)}</td><td>${m.pct}%</td><td>${m.scaled}</td>${[1,2,3,4,5].map(d=>`<td>${m.dom&&m.dom[d]!=null?m.dom[d]+'%':'-'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="muted small">No mock exams yet.</p>'}</section>
-   <section class="panel stack"><h3>Reset</h3><p class="small muted">Clears all progress stored in this browser.</p>${resetAsk?`<div class="row"><span class="small"><b>Erase everything?</b></span><button class="btn primary" data-act="resetyes">Yes, erase</button><button class="btn" data-act="resetno">Cancel</button></div>`:`<div><button class="btn" data-act="resetask">Reset progress</button></div>`}</section>`;
+   ${progressPanel()}`;
 }
 
 /* ---------- actions ---------- */
@@ -1396,7 +1337,7 @@ loadMock();
 experienceBoot();
 if(view==='mock'&&mock&&!mock.done&&mock.end<Date.now())finishMock();
 else render();
-window.__ccarf={Q,CARDS,store:()=>store,go,hint:()=>showHint(true),hints:v=>{hintsOn=v;if(!v)hideHint();}};
+window.__ccarf={Q,CARDS,store:()=>store,ready:()=>overall(domStats()),urgency,daysToExam,go,hint:()=>showHint(true),hints:v=>{hintsOn=v;if(!v)hideHint();}};
 })();
 </script>
 </body>

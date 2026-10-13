@@ -143,8 +143,8 @@ function selPanel(){
   }else{
     const ds=domStats(),o=Math.round(overall(ds)*100),bd=bestDom();
     head=`<div class="selhead"><div class="portrait">${spr('idle')}</div><div><h3>Where to start</h3><span class="st" style="color:#9EE9FF">Nothing selected</span></div></div>`;
-    body=`<p>Click any marker on the map to see your progress there and practice it. Your readiness is ${o}%, and you have mastered ${capCount()} of the 30 tasks.</p><p class="small muted">${bd?`I recommend Domain ${bd}, ${esc(DOM[bd].n)}, next. It is ${DOM[bd].w}% of the exam and has the most room to grow.`:'I recommend a mixed set of questions first, so the map can show where you stand.'}</p>`;
-    cmds=[{k:'A',l:'Start practice',i:'atk',act:'quick',data:{d:bd},tip:'Ten recommended questions'},{k:'M',l:'Mock exam',i:'mock',act:'cgo',data:{v:'mock'},tip:'Full 60-question mock exam'},{k:'T',l:'Flashcards',i:'train',act:'cgo',data:{v:'cards'},tip:'Flashcards'},
+    body=`<p>Click any marker on the map to see your progress there and practice it. Your readiness is ${o}%, and you have mastered ${capCount()} of the 30 tasks.</p><p class="small muted">${bd?`I recommend Domain ${bd}, ${esc(DOM[bd].n)}, next. It is ${DOM[bd].w}% of the exam and has the most room to grow.`:'I recommend the 15-question baseline first, so the map can show where you stand.'}</p>`;
+    cmds=[bd?{k:'A',l:'Start practice',i:'atk',act:'quick',data:{d:bd},tip:'Ten recommended questions'}:{k:'A',l:'Baseline check',i:'atk',act:'baseline',tip:'15 questions across all five domains, to seed this map'},{k:'M',l:'Mock exam',i:'mock',act:'cgo',data:{v:'mock'},tip:'Full 60-question mock exam'},{k:'T',l:'Flashcards',i:'train',act:'cgo',data:{v:'cards'},tip:'Flashcards'},
       {k:'S',l:'Lessons',i:'scout',act:'cgo',data:{v:'guide'},tip:'Lessons for each domain'},{k:'P',l:'Study plan',i:'plan',act:'clib',data:{v:'plan'},tip:'Four-week study plan'},{k:'H',l:'Ask Archie',i:'coach',act:'coach',tip:'Guided tour'},null,null,null];
   }
   return {head,body,cmds};
@@ -164,7 +164,7 @@ function vMap(){
   <section class="mapwrap"><div class="mapscroll">${studyUI.mapView==='written'?writtenCampaign():campMap()}</div><div class="maplegend"><span><i style="background:${STC.own}"></i>Mastered</span><span><i style="background:${STC.cont}"></i>In progress</span><span><i style="background:${STC.foe}"></i>Needs work</span><span><i style="background:${STC.fog}"></i>Not started</span><span><i style="background:#7A2420"></i>Exam scenario</span><span><i style="background:#FF9A3C"></i>Common wrong answer</span></div></section>
   <section class="console"><div class="cpanel minimap">${miniMap()}<div class="mm-t">Overview</div></div><div class="cpanel selinfo">${sp.head}${sp.body}</div><div class="cpanel cmdcard" role="group" aria-label="Actions">${sp.cmds.map(cmdBtn).join('')}</div></section>
   <div class="cols two"><section class="panel quests"><h3>Goals</h3>${questLog()}</section>
-   <section class="panel stack"><h3>Exam date and streak</h3><div class="fieldlbl">Exam date</div><input type="date" id="examDate" value="${esc(store.examDate)}" aria-label="Exam date">${sk.html}<p class="small muted">You studied on ${sk.n} ${sk.n===1?'day':'days'} in the last 18 weeks, and you have seen ${seenAll} of the ${Q.length} questions. Your progress is saved in this browser only.</p></section></div>`;
+   <section class="panel stack"><h3>Exam date and streak</h3><div class="fieldlbl">Exam date</div><input type="date" id="examDate" value="${esc(store.examDate)}" aria-label="Exam date">${sk.html}<p class="small muted">You studied on ${sk.n} ${sk.n===1?'day':'days'} in the last 18 weeks, and you have seen ${seenAll} of the ${Q.length} questions. ${examNote()}</p></section></div>`;
 }
 
 
@@ -189,7 +189,7 @@ function vHome(){
   const seen=Q.filter(q=>store.answers[q.id]).length,ds=domStats(),o=Math.round(overall(ds)*100),bd=bestDom(),cap=capCount();
   const fresh=!seen;
   const greet=fresh?'Hi, I am Archie. Pick a mode below, or press 6 and I will show you around first.':`Welcome back. Your readiness is ${o}%, and you have mastered ${cap} of the 30 tasks. I recommend Domain ${bd||1} next.`;
-  const cta=fresh?`<button class="btn primary big" data-act="coach">Take the 10-minute tour</button><button class="btn big" data-act="quick" data-d="0">Start practicing now</button>`
+  const cta=fresh?`<button class="btn primary big" data-act="coach">Take the 10-minute tour</button><button class="btn big" data-act="baseline">Take a 15-question baseline</button>`
     :`<button class="btn primary big" data-act="quick" data-d="${bd}">Continue with Domain ${bd||1}</button><button class="btn big" data-act="cgo" data-v="map">Open Campaign Mode</button>`;
   const modes=MODES.map(m=>`<button class="mode" data-act="${m.act}" ${m.v?`data-v="${m.v}"`:''} ${m.act==='quick'?`data-d="${bd}"`:''} data-mk="${m.k}"><span class="mk" aria-label="Keyboard shortcut ${m.k}">${m.k}</span><span class="mi"><img src="${MODE_ART[m.id]}" alt="" width="240" height="240" loading="lazy"></span><span class="mt">${m.t}</span><span class="md">${m.d}</span><span class="mm">${m.m}</span></button>`).join('');
   const get=[[Q.length,'scenario questions','With answer-by-answer reasoning'],['60','question mock exam','Timed, with a domain report'],[CARDS.length,'flashcards','Spaced repetition built in'],['3','quick drills','Train pattern recognition'],['5','domain lessons','Rules, diagrams, and traps'],[COACH.length,'tour stops','Real concepts in real code']];
@@ -267,7 +267,7 @@ if(!q.a||!q.a.length||q.a.some(i=>i<0||i>=q.o.length))err.push('bad answer idx')
 if(!tsRe.test(q.ts)||+q.ts[0]!==q.d)err.push('ts/domain mismatch');
 if(new Set(q.o).size!==q.o.length)err.push('dup options');`,
 ready:`// Explicit criteria, not "seems ready":
-ready: acc * Math.min(1, seen / Math.max(1, 0.6*qs.length))`,
+ready: wacc * Math.min(1, seen / Math.max(1, 0.6*qs.length)) * fresh   // answers older than 14 days fade toward half weight`,
 store:`let store={answers:{},cards:{},rate:{},flags:{},mocks:[],days:[],examDate:'',...};
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}`,
 prov:`{ t:'slow, latency, expensive', a:'Parallelize, batch, or cache',
@@ -450,6 +450,7 @@ window.addEventListener('scroll',()=>{if(coach.open)coachFocus(false);},{passive
 window.addEventListener('resize',()=>{if(coach.open)coachFocus(false);});
 function extAct(a,d){
   if(experienceAct(a,d))return true;
+  if(a==='baseline'){cfg={d:0,sc:0,ts:'',mode:'smart',n:15};dr=null;mock=null;startSession(baselineQueue());return true;}
   if(a==='mnavtog'){if(mnavOpen){clearTimeout(mnavT);setMnav(false);}else peekMnav(6000);return true;}
   if(a==='ptab'&&(d.v==='cards'||d.v==='mock')){go(d.v);return true;}
   if(a==='ptab'&&view!=='practice'){sub.practice=d.v;dr=null;go('practice');return true;}

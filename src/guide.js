@@ -185,7 +185,7 @@ function vGuide(){
   if(sub.guide==='boss'||sub.guide==='beast')sub.guide='walk';
   const head=learnHead('gtab:'+sub.guide);
   const s=sub.guide;
-  return head+(s==='walk'?vWalk():s==='boss'?vBoss():s==='beast'?vBeast():s==='items'?vItems():s==='trig'?vTrig():vMaps());
+  return head+(s==='walk'?vWalk():s==='items'?vItems():s==='trig'?vTrig():vMaps());
 }
 function vWalk(){
   const d=sub.glevel;const L=GLEVELS[d];const ds=domStats()[d];const done=store.guide.done;
@@ -195,6 +195,7 @@ function vWalk(){
   return `<div class="stack"><div class="seg">${chips}</div><div class="prail" aria-label="Levels cleared">${[1,2,3,4,5].map(n=>`<i class="${done[n]?'ok':n===d?'cur':''}"></i>`).join('')}</div><span class="small muted">${cleared} of 5 levels cleared</span></div>
   <section class="panel hero chap" style="--c:var(--d${d})"><div class="chapnum">Level ${d}</div><h2 class="disp">${esc(DOM[d].n)}</h2><p class="muted" style="max-width:56ch">${esc(L.tag)}</p>
    ${lessonPreview(d)}
+   ${threeRules(d)}
    ${archie('point',`This lesson covers Domain ${d}, which is ${DOM[d].w}% of the exam. Read the key ideas and the common traps, and then try the practice set at the end.`)}
    <div class="xp"><div class="split small"><b>Worth ${DOM[d].w}% of the exam</b><span class="muted">Your mastery ${Math.round(ds.ready*100)}%, ${ds.seen} of ${ds.total} questions seen</span></div><div class="xpbar"><i style="width:${Math.max(2,Math.round(ds.ready*100))}%"></i></div></div></section>
   <div class="cols two">
@@ -212,30 +213,10 @@ function vWalk(){
   <section class="panel stack"><div class="row"><button class="btn primary" data-act="quick" data-d="${d}">Run the Level ${d} drill</button><label class="check" style="grid-template-columns:24px auto;padding:0"><input type="checkbox" data-gdone="${d}" ${done[d]?'checked':''}><span>Mark this level cleared</span></label></div>
    <div class="row">${d>1?`<button class="btn" data-act="glevel" data-v="${d-1}">Previous level</button>`:''}${d<5?`<button class="btn" data-act="glevel" data-v="${d+1}">Next level</button>`:''}</div></section>`;
 }
-function vBoss(){
-  return `<section class="panel stack"><h2>The six scenario bosses</h2>${archie('fight','Four of these six will be waiting on exam day. Learn every weakness.')}<p class="muted" style="max-width:62ch">Four of these six appear on your exam, drawn at random. Each boss has attack patterns (the traps it sets) and a weakness (the decision rules that beat it). Boss HP is the share of its questions you have not yet answered correctly.</p></section>
-  <div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr))">${BOSSES.slice(1).map((b,i)=>{const s=i+1,S=SC[s],st=bossStats(s);
-   return `<article class="panel stack boss" style="--c:var(--d${S.doms[0]})"><div><span class="small muted">Boss ${s}</span><h3 class="disp" style="font-size:1.5rem;margin-top:2px">${esc(b.name)}</h3><p class="small muted" style="margin-top:2px">${esc(S.n)}</p></div>
-    <div><div class="split small"><b>Boss HP</b><span class="muted">${st.hp}%, ${st.right} of ${st.total} beaten</span></div><div class="hp" role="img" aria-label="Boss HP ${st.hp} percent"><i style="width:${st.hp}%"></i></div></div>
-    <div><b class="lbl">Arena</b><p class="small">${esc(S.b)}</p></div>
-    <div><b class="lbl">Attack patterns</b><p class="small">${esc(S.traps)}</p></div>
-    <div><b class="lbl">Weak to</b><div class="row" style="gap:6px;margin-top:4px">${b.weak.map(r=>`<span class="tag">Rule ${r}: ${esc(RULES[r].n)}</span>`).join('')}</div></div>
-    <div><b class="lbl">Strategy</b><p class="small">${b.plan}</p></div>
-    <button class="btn primary" data-act="scdrill" data-v="${s}">Fight this boss</button></article>`;}).join('')}</div>`;
-}
-function vBeast(){
-  return `<section class="panel stack"><h2>The wrong-answer bestiary</h2>${archie('point','Spot one of these and you can cross out an option before you even finish reading.')}<p class="muted" style="max-width:62ch">Every distractor on the exam is one of five creatures. Learn their tells and you can cross out two options in seconds, before you even understand the question.</p><div class="row"><button class="btn primary" data-act="opendrill" data-v="shape">Hunt them in the drill</button></div></section>
-  <div class="stack">${BEASTS.map((b,i)=>{const ex=SHAPEQ.filter(x=>x.s===i).slice(0,2);const st=store.drill.shape;
-   return `<article class="panel beast" style="--c:var(--d${i+1})"><div class="glyphbox">${glyph(i)}</div><div class="stack">
-    <div><span class="small muted">Creature ${i+1}, shape: ${esc(SHAPENAMES[i])}</span><h3 class="disp" style="font-size:1.6rem;margin-top:2px">${esc(b.name)}</h3></div>
-    <div class="cols even"><div><b class="lbl">Habitat</b><p class="small">${esc(b.habitat)}</p><b class="lbl" style="margin-top:10px">Tells</b><ul class="tells">${b.tells.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>
-    <div><b class="lbl">Counter</b><p class="small">${esc(b.counter)}</p>${b.rule?`<p class="small muted" style="margin-top:8px">Pairs with Rule ${b.rule}: ${esc(RULES[b.rule].n)}</p>`:''}</div></div>
-    ${ex.length?`<div><b class="lbl">Seen in the wild</b>${ex.map(x=>`<p class="seen">${fmt(x.o)}</p>`).join('')}</div>`:''}</div></article>`;}).join('')}</div>`;
-}
 function vItems(){
   const cats=['All'].concat([...new Set(ITEMS.map(i=>i.c))]);
   const list=ITEMS.filter(i=>sub.icat==='All'||i.c===sub.icat);
-  return `<section class="panel stack"><h2>Item compendium</h2><p class="muted" style="max-width:62ch">Everything you carry into the exam, with when to equip it and what it is commonly confused with.</p><div class="seg">${cats.map(c=>`<button data-act="icat" data-v="${esc(c)}" aria-pressed="${sub.icat===c}">${esc(c)}</button>`).join('')}</div></section>
+  return `<section class="panel stack"><div class="split"><h2>Item compendium</h2><button class="btn ghost no-print" data-act="printtab">Print this tab</button></div><p class="muted" style="max-width:62ch">Everything you carry into the exam, with when to equip it and what it is commonly confused with.</p><div class="seg">${cats.map(c=>`<button data-act="icat" data-v="${esc(c)}" aria-pressed="${sub.icat===c}">${esc(c)}</button>`).join('')}</div></section>
   <div class="itemgrid">${list.map(i=>`<article class="item"><b class="iname">${esc(i.n)}</b><span class="tag" style="align-self:flex-start">${esc(i.k)}</span><p class="small"><b>Equip when:</b> ${i.u}</p><p class="small muted"><b>Not for:</b> ${i.x}</p>${sourceLine(termTasks(i))}</article>`).join('')}</div>`;
 }
 function vMaps(){return vDiagramLibrary();}
@@ -287,7 +268,25 @@ TRIG.forEach(r=>CARDS.push({d:6,f:'Trigger: '+r.t,b:r.a+'. '+r.w+'. '+r.n.replac
 function vTrig(){
   const cats=['All','Solid','Refined','Careful','Added'];
   const list=TRIG.filter(row=>sub.tcat==='All'||row.v===sub.tcat);
-  return `<section class="panel stack"><h2>Trigger words</h2><p class="muted">The original three-column cheat sheet, with guide checks and refinements kept beside each row.</p><div class="seg">${cats.map(category=>`<button data-act="tcat" data-v="${category}" aria-pressed="${sub.tcat===category}">${category}${category==='All'?'':' '+TRIG.filter(row=>row.v===category).length}</button>`).join('')}</div></section>
+  return `<section class="panel stack"><div class="split"><h2>Trigger words</h2><button class="btn ghost no-print" data-act="printtab">Print this tab</button></div><p class="muted">The original three-column cheat sheet, with guide checks and refinements kept beside each row.</p><div class="seg">${cats.map(category=>`<button data-act="tcat" data-v="${category}" aria-pressed="${sub.tcat===category}">${category}${category==='All'?'':' '+TRIG.filter(row=>row.v===category).length}</button>`).join('')}</div></section>
   <table class="trigger-table"><caption class="sr-only">Exam trigger words, answer patterns, and what to think</caption><thead><tr><th scope="col">Trigger words</th><th scope="col">Answer pattern</th><th scope="col">What to think</th></tr></thead><tbody>${list.map(row=>`<tr class="trig"><td data-label="Trigger words"><b class="tw">${esc(row.t)}</b><span class="vtag">${esc(row.v)}</span></td><td data-label="Answer pattern">${esc(row.a)}</td><td data-label="What to think">${esc(row.w)}<details><summary>Guide check · ${esc(row.v)}</summary><p>${row.n}</p>${sourceLine(triggerTasks(row))}</details></td></tr>`).join('')}</tbody></table>
   <section class="panel stack"><h3>The sheet's key rules, checked</h3>${KEYRULES.map(rule=>`<div class="krule"><b>${esc(rule.t)}</b><span class="vtag">${esc(rule.v)}</span><p class="small">${rule.n}</p></div>`).join('')}</section>`;
 }
+
+const THREE={1:[1,4,5],2:[6,8,3],3:[1,3,9],4:[2,7,9],5:[10,8,5]};
+function threeRules(d){
+  const g=GENERAL[d];
+  return `<div class="threerules"><b>Three rules that settle most Domain ${d} questions</b><ol>${THREE[d].map(n=>`<li><span>${esc(RULES[n].n)}.</span> ${esc(RULES[n].fix)}</li>`).join('')}</ol><p class="general"><b>Beyond Claude.</b> ${esc(g[0])} <a href="${g[2]}" target="_blank" rel="noopener">${esc(g[1])} <span aria-hidden="true">&#8599;</span></a></p></div>`;
+}
+function shapeDetail(i){
+  const b=BEASTS[i],ex=SHAPEQ.find(x=>x.s===i);
+  return `<details class="shape-more"><summary>Tells and how to counter it</summary><p><b>Tells.</b> ${b.tells.map(esc).join('; ')}.</p><p><b>Counter.</b> ${esc(b.counter)}</p>${ex?`<p><b>Example.</b> ${esc(ex.c)} A tempting answer: &ldquo;${esc(ex.o)}&rdquo; ${esc(ex.w)}</p>`:''}</details>`;
+}
+
+const GENERAL={
+ 1:['Gate risky tool calls before they run, and keep a human approval step before anything irreversible. This is general agent practice, not a Claude feature.','Governance guide','https://agentic-ai.readthedocs.io/en/latest/AIGovernance/governance-best-practices/'],
+ 2:['MCP is an open protocol, so well-described tools and structured errors help any client or model, not only Claude.','Model Context Protocol','https://modelcontextprotocol.io'],
+ 3:['Give any coding agent a way to check its own work, such as tests, linters, or a browser, and run those checks in CI.','Evaluation-driven agent development (paper)','https://arxiv.org/pdf/2411.13768'],
+ 4:['Layer your checks: deterministic validation first, then statistical metrics, and a model judge only for what is left. This holds for any provider.','Layered evaluators (vendor guide)','https://dev.to/kuldeep_paul/ai-agent-observability-for-llm-applications-a-practical-guide-for-engineers-and-product-managers-1o2m'],
+ 5:['Humans calibrate automated checks and turn expert judgment into test data. Treat any model confidence as unproven until it is checked against labeled cases.','Human review in evals','https://www.confident-ai.com/knowledge-base']
+};

@@ -36,7 +36,7 @@ def run(playwright, profile):
     page.evaluate('window.__ccarf.hints(false)')
     assert page.locator('.mode').count() == 6
     assert page.locator('.mode[data-mk="1"] .mt').inner_text() == 'Campaign Mode'
-    assert page.evaluate('window.__ccarf.Q.length') == 124
+    assert page.evaluate('window.__ccarf.Q.length') == 138
     assert page.evaluate('window.__ccarf.CARDS.length') == 128
     assert page.locator('h1').count() == 1
     assert page.locator('#archtip').inner_text() == 'Hi, I am Archie. Pick a mode below, or press 6 and I will show you around first.'
@@ -48,7 +48,7 @@ def run(playwright, profile):
     page.screenshot(path=str(OUT / f'release-{name}-home.png'), full_page=True)
     assert page.locator('.hero-actions [data-act="coach"]').is_visible()
     assert page.locator('.hero-bg,.first-pattern').count() == 0
-    page.locator('.hero-actions [data-act="quick"]').click()
+    page.locator('.hero-actions [data-act="baseline"]').click()
     page.wait_for_selector('.qtext')
     selected = page.locator('.opts .opt').first
     selected.click()
@@ -104,7 +104,7 @@ def run(playwright, profile):
     context.close()
     browser.close()
     return {'profile': name, 'engine': engine, 'viewport': [width, height],
-            'question_count': 124, 'flashcard_count': 128, 'errors': errors, 'passed': True}
+            'question_count': 138, 'flashcard_count': 128, 'errors': errors, 'passed': True}
 
 
 with sync_playwright() as playwright:

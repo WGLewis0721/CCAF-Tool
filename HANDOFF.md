@@ -171,7 +171,8 @@ Key ones: `quick` (10 questions, `data-d` domain or 0 for mixed), `tsdrill` (one
 
 ### Scoring formulas
 
-- Readiness per domain = `acc * min(1, seen / (0.6 * total))`, where `acc` uses the latest answer per question. Overall readiness weights the domains by exam weight.
+- Readiness per domain = `wacc * min(1, seen / (0.6 * total)) * fresh`. `wacc` is the latest-answer accuracy weighted by recency, and `fresh` is the average recency weight. An answer under 14 days old has weight 1, then fades linearly to 0.5 at 70 days (`evW` in `template.html`).
+- Exam date: `daysToExam()` and `urgency()` (1 within 14 days, 0.5 within 45, 0.2 otherwise, 0 if unset). Smart mix orders missed, new, stale-correct, then fresh-correct questions, weighting weaker domains by urgency. Correct flashcards come back sooner as the exam nears. Overall readiness weights the domains by exam weight.
 - A task counts as mastered at 80% or more of latest answers correct (`tsState`: `own`, `cont`, `foe`, `fog`).
 - Rough mock score = `100 + 900 * percent correct`, so 720 is about 69%. Copy always calls this an estimate and recommends aiming for 80%.
 
@@ -273,7 +274,7 @@ Rules (most enforced by `scripts/validate.js`):
 - `ts` must start with the domain number `d`.
 - **No em dashes or en dashes anywhere.** This is the owner's standing preference for all writing, and the validator enforces it on questions and cards.
 
-Current counts: 124 questions (D1 24, D2 21, D3 27, D4 29, D5 23); 12 official samples; 4 multi-answer questions.
+Current counts: 138 questions (D1 27, D2 23, D3 30, D4 33, D5 25); 12 official samples; 4 multi-answer questions.
 
 ### Other content
 
@@ -319,13 +320,22 @@ A separate **Anthropic-brand Home mockup** exists as a Claude Design canvas: ivo
 
 ## 10. Known gaps and tech debt
 
-- **Dead code:** `vHomeOld()`, `traceHtml()`, and `heatHtml()` in `template.html` belong to retired home screens and are no longer called. `vBoss()` and `vBeast()` in `guide.js` are no longer routed (bosses and beasts now live on the map). Remove them carefully.
+- **Dead code:** the retired home screens and the unrouted boss/beast views were removed. `BEASTS` and `SHAPEQ` still feed the shape details and drills.
 - **Layered CSS:** seven override blocks in `template.html` plus `design.css`, from successive redesigns. A consolidation pass would shrink the file, but check every view on both breakpoints afterward.
 - **Single theme:** the app is dark-only by design. Light mode would need its own token set.
 - **Local-only progress:** no sync between devices or people. A shared leaderboard would need a backend, which GitHub Pages cannot host.
 - **Map on phones:** the map scrolls sideways (minimum width 760px) so markers stay tappable.
 - **Fonts:** loaded from Google Fonts, so they fall back to system fonts offline.
 - **Validator source:** `scripts/validate.js` contains literal dash characters inside its own dash-detecting regular expressions. That is intentional, but writing them as Unicode escapes (code points U+2014 and U+2013) would be cleaner.
+
+## 10b. Study aids added after the visual pass
+
+- Baseline check (15 questions split 4/3/3/3/2 by domain weight), reachable from home, the map's idle panel, and practice setup. It records answers like any session, so the map fills in.
+- "Tough for me" practice mode: answered at least twice with under 60% correct.
+- Progress export and import (Learn > Syllabus > Your progress). Export writes `{app:'ccarf-study', v:1, data}` without UI state. Import validates every field, drops unknown question or card ids, shows a summary, and replaces progress only after confirmation. The storage key is unchanged.
+- Exam-day sheet: "Print exam-day sheet" on Decision rules prints a compact one-to-two page sheet built from weights, tactics, rules, shapes, and trigger words. Per-tab print buttons are on Decision rules, Trigger words, and Key terms.
+- `scripts/coverage.py <guide.pdf>` is an authoring aid. It lists guide bullets with low keyword overlap against the question bank. The guide text is read locally and never embedded.
+- Option-length balance: `q-fix4.js` rebalances more distractors. Official samples (`off:1`) are left as written.
 
 ## 11. Ideas the owner has raised or been offered
 

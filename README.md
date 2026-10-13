@@ -10,7 +10,7 @@ CCAF-Tool is an unofficial study tool for the **Claude Certified Architect, Foun
 
 - **Home:** A landing page where you pick a study mode. Number keys 1 to 6 open each mode.
 - **Campaign Mode:** All 30 task statements on the original game map, with refined artwork, actual progress colors, six scenarios, and five wrong-answer patterns. Switch to **Exam domains** for a written view with the same selection and progress.
-- **Practice:** 124 scenario questions with explanations, 128 flashcards with spaced repetition, a timed 60-question mock exam, and three quick drills.
+- **Practice:** 138 scenario questions with explanations, 128 flashcards with spaced repetition, a timed 60-question mock exam, and three quick drills.
 - **Learn:** **Study plan comes first**, with direct links to exact lessons, question sets, decks, scenarios, and exercise briefs. Lessons teach worked decisions; Diagrams provide eight complete mechanism models. Trigger Words keeps the original three-column cheat sheet. Guide pages and relevant official documentation are linked beside the material.
 - **Archie:** A guide who docks in the menu and offers tips and facts based on the screen you are on. His 19-step tour explains each exam domain using this app's own code.
 
@@ -153,3 +153,12 @@ replace testing on physical devices.
 - The official Claude Certified Architect, Foundations exam guide
 - [Claude Code documentation](https://code.claude.com/docs)
 - [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
+
+## How this was built
+
+This tool was built with Claude as a coding partner. The direction, the content decisions, and the checks were mine, and the checks are what kept the output trustworthy.
+
+- **Verification loop.** `scripts/validate.js` fails CI on any bad question. Four Playwright suites run on Chromium and WebKit at five device widths with a no-horizontal-scroll rule: `test_ui.py`, `test_experience.py`, `test_motion.py` and `test_release.py`. `test_integration.py` covers the study aids.
+- **Content checked against the primary source.** Questions are checked against the official exam guide. Explanations link to guide pages and Anthropic docs, and items that go beyond the guide are tagged. When I re-checked AI-written questions against the guide, one turned out to paraphrase an official sample question, so I replaced it.
+- **Rules applied to the app itself.** Must-always rules live in code, not prompts: the mock exam's two-step submit and the validator gate are examples. Readiness is built from recorded answers, not self-rating. Answers older than two weeks fade toward half weight, and review leans toward weaker domains as the exam date approaches.
+- **Planned, not bolted on.** Ideas from competitor and research review were graded for fit with existing features. Strong fits were folded in, and the rest are parked in `INTEGRATION-PLAN.md`.
