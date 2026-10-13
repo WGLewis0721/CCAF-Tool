@@ -17,7 +17,7 @@ CONTENT = SRC / "content"
 # Order matters: the q-fix files patch questions defined in the q-s files.
 QUESTION_FILES = [
     "q-s1.js", "q-s2.js", "q-s3.js", "q-s4.js", "q-s5.js", "q-s6.js", "q-s7.js",
-    "q-fix.js", "q-fix2.js", "q-fix3.js",
+    "q-fix.js", "q-fix2.js", "q-fix3.js", "q-fix4.js",
 ]
 
 

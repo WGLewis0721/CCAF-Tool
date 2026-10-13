@@ -145,7 +145,7 @@ function applyStudyRoute(path,{initial=false,force=false}={}){
   const [name,query='']=path.split('?'),params=new URLSearchParams(query);
   const number=(key,min,max,fallback)=>{const raw=params.get(key);const n=raw===null?fallback:Number(raw);return Number.isInteger(n)&&n>=min&&n<=max?n:fallback;};
   if(name==='practice/questions'&&!force&&((mock&&!mock.done)||(sess&&sess.items.some(item=>!item.done)))){
-    const same=!mock&&cfg.d===number('domain',0,5,0)&&cfg.sc===number('scenario',0,6,0)&&cfg.ts===(params.get('task')||'')&&cfg.mode===(params.get('mode')||'smart')&&cfg.n===number('count',0,124,10);
+    const same=!mock&&cfg.d===number('domain',0,5,0)&&cfg.sc===number('scenario',0,6,0)&&cfg.ts===(params.get('task')||'')&&cfg.mode===(params.get('mode')||'smart')&&cfg.n===number('count',0,200,10);
     if(!same){pendingStudyRoute=path;render();requestAnimationFrame(()=>$('#study-session-dialog [data-act="studyresume"]')?.focus());return;}
   }
   routeApplying=true;pendingStudyRoute=null;studyUI.task='';studyUI.scenario=0;
@@ -154,7 +154,7 @@ function applyStudyRoute(path,{initial=false,force=false}={}){
     view='map';const task=TS.find(t=>t.id===params.get('task')),scenario=number('scenario',0,6,0);if(task)csel='ts:'+task.id;else if(scenario)csel='boss:'+scenario;
   }else if(name==='practice/questions'){
     const task=TS.find(t=>t.id===params.get('task'));
-    const nextCfg={d:number('domain',0,5,0),sc:number('scenario',0,6,0),ts:task?.id||'',mode:['smart','new','missed','flag','off'].includes(params.get('mode'))?params.get('mode'):'smart',n:number('count',0,124,10)};
+    const nextCfg={d:number('domain',0,5,0),sc:number('scenario',0,6,0),ts:task?.id||'',mode:['smart','new','missed','tough','flag','off'].includes(params.get('mode'))?params.get('mode'):'smart',n:number('count',0,200,10)};
     const same=JSON.stringify(cfg)===JSON.stringify(nextCfg)&&sess;
     cfg=nextCfg;view='practice';sub.practice='q';dr=null;
     if(!same){sess=null;const items=buildQueue(pool(),cfg.n);if(items.length)sess={items:items.map(q=>mkItem(q)),i:0};}
@@ -192,6 +192,11 @@ function focusStudyDestination(){
 function studyReturnBanner(){return studyOrigin&&!(view==='library'&&sub.library==='plan')?`<div class="study-return">${studyLink(`learn/plan?week=${studyOrigin.week}&step=${studyOrigin.step}`,'← Back to study plan')}<span>Week ${studyOrigin.week} · same step</span></div>`:'';}
 function studySessionDialog(){return pendingStudyRoute?`<div class="study-session-overlay"><section id="study-session-dialog" class="panel" role="dialog" aria-modal="true" aria-labelledby="study-session-title"><h2 id="study-session-title">You have a session in progress</h2><p>Resume it, or leave it and open this linked question set. Completed practice answers stay saved.</p><div class="row"><button class="btn primary" data-act="studyresume">Resume current session</button><button class="btn" data-act="studyswitch">Leave session and open set</button></div></section></div>`:'';}
 function experienceAct(a,d){
+  if(a==='printtab'){window.print();return true;}
+  if(a==='exportprogress'){exportProgress();return true;}
+  if(a==='importcancel'){importPreview=null;importError='';render();return true;}
+  if(a==='importconfirm'){applyImport();return true;}
+  if(a==='printsheet'){printSheet();return true;}
   if(a==='resetyes'){
     Object.keys(studyUI).forEach(key=>delete studyUI[key]);Object.assign(studyUI,{week:1,mapView:'map',diagram:0,motion:true});studyOrigin=null;pendingStudyRoute=null;sess=null;mock=null;dr=null;
     try{sessionStorage.removeItem(KEY+'-plan-origin');sessionStorage.removeItem(KEY+'-practice');}catch{}
@@ -229,7 +234,7 @@ function experienceInner(html){
   if(view==='mock'&&mock?.done)html+=sourceLine(Object.keys(mock.res.tsMiss||{}));
   if(view==='practice'&&sub.practice==='q')html=`<div class="study-question-context"><span>${cfg.ts?'Task '+cfg.ts:cfg.d?'Domain '+cfg.d:cfg.sc?'Scenario '+cfg.sc:'All domains'} · ${cfg.mode==='missed'?'missed answers':cfg.mode==='off'?'official samples':'practice'}${sess?' · '+sess.items.length+' questions':''}</span></div>`+html;
   if(view==='library'&&sub.library==='scenarios')html=html.replace('<div class="grid3">','<div class="grid3 exercise-cards">');
-  const footer=view==='mock'&&mock&&!mock.done?'':`<div class="study-utility"><span>Guide ${esc(SOURCES.version)}</span>${guideLink(1,'Original exam guide')}<button class="btn ghost" data-act="motiontoggle" aria-pressed="${studyUI.motion===false}">${studyUI.motion===false?'Resume motion':'Pause motion'}</button></div>`;
+  const footer=view==='mock'&&mock&&!mock.done?'':`<div class="study-utility"><span>Unofficial study aid. Guide ${esc(SOURCES.version)}, checked ${esc(SOURCES.verified)}.</span>${guideLink(1,'Original exam guide')}<button class="btn ghost" data-act="motiontoggle" aria-pressed="${studyUI.motion===false}">${studyUI.motion===false?'Resume motion':'Pause motion'}</button></div>`;
   return studyReturnBanner()+html+footer+studySessionDialog();
 }
 function stopStudyMotion(){studyMotionTimers.forEach(clearTimeout);studyMotionTimers=[];studyAnimations.forEach(animation=>animation.cancel());studyAnimations=[];}
@@ -314,3 +319,85 @@ document.addEventListener('keydown',event=>{
     if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
   }
 },true);
+
+(function(){
+  let opened=[];
+  window.addEventListener('beforeprint',()=>{opened=[...document.querySelectorAll('#app details:not([open])')];opened.forEach(x=>x.open=true);});
+  window.addEventListener('afterprint',()=>{opened.forEach(x=>x.open=false);opened=[];});
+})();
+
+function sheetHtml(){
+  const weights=[1,2,3,4,5].map(d=>`<li><b>D${d} ${DOM[d].w}%</b> ${esc(DOM[d].n)}</li>`).join('');
+  const rules=RULES.slice(1).map((r,i)=>`<li><b>${i+1}. ${esc(r.n)}.</b> ${esc(r.fix)}</li>`).join('');
+  const shapes=SHAPES.map(s=>`<li><b>${esc(s.n)}.</b> ${esc(s.d)}</li>`).join('');
+  const tactics=TACTICS.map(t=>`<li>${esc(t)}</li>`).join('');
+  const trig=TRIG.map(r=>`<tr><td>${esc(r.t)}</td><td>${esc(r.a)}</td></tr>`).join('');
+  return `<h1>CCAR-F exam-day sheet</h1><p class="s-note">Unofficial study aid built from the public exam guide ${esc(SOURCES.version)}, checked ${esc(SOURCES.verified)}. Check the guide for anything that matters.</p>
+  <p><b>Format.</b> 60 items, 120 minutes, closed book, 4 of 6 scenarios, pass at 720 of 1,000.</p><ul class="s-weights">${weights}</ul>
+  <div class="s-cols"><section><h2>Tactics</h2><ul>${tactics}</ul><h2>Five wrong-answer shapes</h2><ul>${shapes}</ul></section>
+  <section><h2>Ten decision rules</h2><ul>${rules}</ul></section></div>
+  <h2>Trigger words</h2><table><thead><tr><th>When you see</th><th>Think</th></tr></thead><tbody>${trig}</tbody></table>`;
+}
+function printSheet(){
+  let el=document.getElementById('sheet');if(el)el.remove();
+  el=document.createElement('div');el.id='sheet';el.innerHTML=sheetHtml();document.body.appendChild(el);
+  document.body.classList.add('sheet-print');
+  const done=()=>{document.body.classList.remove('sheet-print');el.remove();window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  window.print();
+}
+
+/* ---------- progress export and import ---------- */
+let importPreview=null,importError='';
+function freshStore(){return {answers:{},cards:{},rate:{},flags:{},mocks:[],days:[],examDate:'',view:'library',drill:{tell:{n:0,c:0},shape:{n:0,c:0},axis:{n:0,c:0}},plan:{},planStart:'',guide:{done:{}}};}
+function exportProgress(){
+  const {studyUI:_ui,...data}=store;
+  const payload={app:'ccarf-study',v:1,exported:new Date().toISOString(),data};
+  const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ccarf-progress-${today()}.json`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function cleanProgress(o){
+  const isObj=x=>x&&typeof x==='object'&&!Array.isArray(x),num=x=>typeof x==='number'&&isFinite(x),date=x=>typeof x==='string'&&/^\d{4}-\d\d-\d\d$/.test(x);
+  if(!isObj(o)||o.app!=='ccarf-study'||o.v!==1||!isObj(o.data))return null;
+  const d=o.data,out=freshStore(),qids=new Set(Q.map(q=>q.id)),ckeys=new Set(CARDS.map(cardKey));
+  if(isObj(d.answers))for(const [k,a] of Object.entries(d.answers))if(qids.has(k)&&isObj(a)&&num(a.n)&&num(a.c))out.answers[k]={n:Math.max(0,Math.floor(a.n)),c:Math.max(0,Math.floor(a.c)),last:!!a.last,t:num(a.t)?a.t:Date.now()};
+  if(isObj(d.cards))for(const [k,c] of Object.entries(d.cards))if(ckeys.has(k)&&isObj(c)&&num(c.box)&&num(c.due))out.cards[k]={box:Math.min(4,Math.max(0,Math.floor(c.box))),due:c.due};
+  if(isObj(d.flags))for(const k of Object.keys(d.flags))if(qids.has(k)&&d.flags[k])out.flags[k]=true;
+  if(isObj(d.rate))for(const [k,v] of Object.entries(d.rate))if(k.length<20&&(num(v)||typeof v==='string'&&v.length<20))out.rate[k]=v;
+  if(Array.isArray(d.mocks))out.mocks=d.mocks.filter(m=>isObj(m)&&typeof m.date==='string'&&num(m.pct)&&num(m.scaled)).slice(-100).map(m=>({date:String(m.date).slice(0,20),pct:m.pct,scaled:m.scaled,mins:num(m.mins)?m.mins:0,dom:isObj(m.dom)?Object.fromEntries(Object.entries(m.dom).filter(([k,v])=>/^[1-5]$/.test(k)&&num(v))):{}}));
+  if(Array.isArray(d.days))out.days=[...new Set(d.days.filter(date))].slice(-500);
+  if(d.examDate===''||date(d.examDate))out.examDate=d.examDate||'';
+  if(isObj(d.drill))for(const k of ['tell','shape','axis'])if(isObj(d.drill[k])&&num(d.drill[k].n)&&num(d.drill[k].c))out.drill[k]={n:d.drill[k].n,c:d.drill[k].c};
+  if(isObj(d.plan))for(const [k,v] of Object.entries(d.plan))if(k.length<20)out.plan[k]=!!v;
+  if(date(d.planStart))out.planStart=d.planStart;
+  if(isObj(d.guide)&&isObj(d.guide.done))for(const n of [1,2,3,4,5])if(d.guide.done[n])out.guide.done[n]=true;
+  if(d.hints===false)out.hints=false;
+  if(d.lastLearn==='guide'||d.lastLearn==='library')out.lastLearn=d.lastLearn;
+  return out;
+}
+function applyImport(){
+  const p=importPreview;if(!p)return;
+  store=Object.assign(freshStore(),p.data,{view:'library',studyUI});
+  importPreview=null;importError='';save();render();
+}
+function progressPanel(){
+  const p=importPreview,err=importError;
+  const preview=p?`<div class="import-preview" role="status"><p><b>Replace the progress in this browser?</b> The file has ${Object.keys(p.data.answers).length} answered questions, ${Object.keys(p.data.cards).length} reviewed cards, ${p.data.mocks.length} mock results, and ${p.data.days.length} study days.</p><div class="row"><button class="btn primary" data-act="importconfirm">Replace my progress</button><button class="btn" data-act="importcancel">Cancel</button></div></div>`:'';
+  return `<section class="panel stack" id="study-progress"><h3>Your progress</h3><p class="small muted">Progress lives in this browser only. Save it to a file to move it to another browser or device, or to keep a backup.</p>
+  <div class="row"><button class="btn" data-act="exportprogress">Save progress to a file</button><label class="btn file-btn">Load progress from a file<input type="file" id="progressFile" accept="application/json,.json" hidden></label></div>
+  ${err?`<p class="small" role="alert">${esc(err)}</p>`:''}${preview}
+  <h3 style="margin-top:12px">Reset</h3><p class="small muted">Clears all progress stored in this browser.</p>${resetAsk?`<div class="row"><span class="small"><b>Erase everything?</b></span><button class="btn primary" data-act="resetyes">Yes, erase</button><button class="btn" data-act="resetno">Cancel</button></div>`:`<div><button class="btn" data-act="resetask">Reset progress</button></div>`}</section>`;
+}
+document.addEventListener('change',e=>{
+  const t=e.target;if(!t||t.id!=='progressFile')return;
+  const f=t.files&&t.files[0];if(!f)return;
+  if(f.size>2000000){importError='That file is too large to be a progress file.';importPreview=null;render();return;}
+  const r=new FileReader();
+  r.onload=()=>{let o=null;try{o=JSON.parse(r.result);}catch{}
+    const data=cleanProgress(o);
+    if(data){importPreview={data};importError='';}else{importPreview=null;importError='That file is not a progress file from this tool.';}
+    render();};
+  r.onerror=()=>{importError='The file could not be read.';render();};
+  r.readAsText(f);
+});
